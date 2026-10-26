@@ -1,0 +1,22 @@
+<h1>Accordion</h1>
+
+<mat-accordion>
+  @for (panel of panels(); track panel.id; let first = $first) {
+    <mat-expansion-panel [expanded]="first">
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon>{{ panel.icon }}</mat-icon>
+          {{ panel.title }}
+        </mat-panel-title>
+        <mat-panel-description>{{ panel.description }}</mat-panel-description>
+      </mat-expansion-panel-header>
+
+      <dl>
+        @for (item of panel.items; track item.label) {
+          <dt>{{ item.label }}</dt>
+          <dd>{{ item.value }}</dd>
+        }
+      </dl>
+    </mat-expansion-panel>
+  }
+</mat-accordion>

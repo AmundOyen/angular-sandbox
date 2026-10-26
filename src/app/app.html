@@ -1,5 +1,15 @@
 <mat-toolbar class="app-toolbar">
   <span>{{ title() }}</span>
+  <nav class="nav">
+    <a
+      mat-button
+      routerLink="/"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      >Home</a
+    >
+    <a mat-button routerLink="/accordion" routerLinkActive="active">Accordion</a>
+  </nav>
   <span class="spacer"></span>
   <a
     mat-icon-button
@@ -13,6 +23,5 @@
 </mat-toolbar>
 
 <main class="content">
-  <h1>Hello, {{ title() }}</h1>
   <router-outlet />
 </main>

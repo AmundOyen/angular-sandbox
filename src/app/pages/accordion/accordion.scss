@@ -1,0 +1,24 @@
+:host {
+  display: block;
+  max-width: 720px;
+}
+
+mat-panel-title {
+  gap: 8px;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 24px;
+  margin: 0;
+}
+
+dt {
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+dd {
+  margin: 0;
+}
