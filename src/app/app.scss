@@ -17,6 +17,27 @@
       container-text-color: var(--mat-sys-on-primary),
     )
   );
+  @include mat.icon-button-overrides(
+    (
+      icon-color: var(--mat-sys-on-primary),
+    )
+  );
+}
+
+.nav {
+  margin-left: 24px;
+
+  a {
+    @include mat.button-overrides(
+      (
+        text-label-text-color: var(--mat-sys-on-primary),
+      )
+    );
+  }
+
+  .active {
+    background-color: color-mix(in srgb, var(--mat-sys-on-primary) 16%, transparent);
+  }
 }
 
 .spacer {
