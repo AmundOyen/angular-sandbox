@@ -20,4 +20,11 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('h1')?.textContent).toContain('Hello, angular-sandbox');
   });
+
+  it('should render the toolbar with the title', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('mat-toolbar')?.textContent).toContain('angular-sandbox');
+  });
 });
