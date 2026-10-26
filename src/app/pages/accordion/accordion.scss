@@ -3,8 +3,17 @@
   max-width: 720px;
 }
 
+.hint {
+  color: var(--mat-sys-on-surface-variant);
+}
+
 mat-panel-title {
   gap: 8px;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: var(--mat-sys-on-surface-variant);
 }
 
 dl {
@@ -21,4 +30,19 @@ dt {
 
 dd {
   margin: 0;
+}
+
+// Drag and drop states
+.cdk-drag-preview {
+  box-shadow: var(--mat-sys-level3);
+  border-radius: var(--mat-expansion-container-shape, 12px);
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.4;
+}
+
+.cdk-drag-animating,
+.cdk-drop-list-dragging .mat-expansion-panel:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }

@@ -1,10 +1,22 @@
 <h1>Accordion</h1>
+<p class="hint">Drag a panel by its handle to reorder. The order is remembered in this browser.</p>
 
-<mat-accordion>
-  @for (panel of panels(); track panel.id; let first = $first) {
-    <mat-expansion-panel [expanded]="first">
+<mat-accordion cdkDropList cdkDropListLockAxis="y" (cdkDropListDropped)="drop($event)">
+  @for (panel of panels(); track panel.id) {
+    <mat-expansion-panel
+      cdkDrag
+      [attr.data-panel-id]="panel.id"
+      [expanded]="panel.id === initiallyExpandedId"
+    >
       <mat-expansion-panel-header>
         <mat-panel-title>
+          <mat-icon
+            class="drag-handle"
+            cdkDragHandle
+            aria-label="Drag to reorder"
+            (click)="$event.stopPropagation()"
+            >drag_indicator</mat-icon
+          >
           <mat-icon>{{ panel.icon }}</mat-icon>
           {{ panel.title }}
         </mat-panel-title>
