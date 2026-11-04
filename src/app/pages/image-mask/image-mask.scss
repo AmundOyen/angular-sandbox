@@ -1,0 +1,146 @@
+:host {
+  display: block;
+  max-width: 1200px;
+}
+
+h2 {
+  font: var(--mat-sys-title-large);
+  margin: 0 0 4px;
+}
+
+h3 {
+  font: var(--mat-sys-title-small);
+  margin: 0;
+}
+
+.hint {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 12px;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mat-sys-error);
+}
+
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 16px;
+  border: 2px dashed var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-large);
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
+
+  &.drag-over {
+    border-color: var(--mat-sys-primary);
+    background-color: var(--mat-sys-primary-container);
+  }
+}
+
+.drop-icon {
+  width: 48px;
+  height: 48px;
+  font-size: 48px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.file-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 8px 8px 8px 16px;
+  border-radius: var(--mat-sys-corner-medium);
+  background-color: var(--mat-sys-surface-container);
+}
+
+.file-name {
+  font: var(--mat-sys-title-small);
+  overflow-wrap: anywhere;
+}
+
+.file-size {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 32px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ratio {
+  margin-bottom: 12px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.readout {
+  color: var(--mat-sys-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+.preview-frame {
+  margin: 12px 0 24px;
+  padding: 16px;
+  border-radius: var(--mat-sys-corner-medium);
+  // Checkerboard so transparent (clipped) areas are visible.
+  background:
+    repeating-conic-gradient(var(--mat-sys-surface-container-high) 0 25%, transparent 0 50%) 0 0 /
+      16px 16px,
+    var(--mat-sys-surface-container-lowest);
+}
+
+.masked-crop {
+  position: relative;
+  overflow: hidden;
+
+  img {
+    position: absolute;
+    max-width: none;
+  }
+}
+
+.masked-clip {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+}
+
+.css-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.css {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  border-radius: var(--mat-sys-corner-medium);
+  background-color: var(--mat-sys-surface-container-highest);
+  font:
+    13px/1.5 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+}

@@ -1,0 +1,134 @@
+<h1>Image mask</h1>
+
+<input
+  #fileInput
+  type="file"
+  accept="image/*"
+  hidden
+  data-testid="file-input"
+  (change)="onFileSelected($event)"
+/>
+
+@if (store.loading()) {
+  <mat-progress-bar mode="indeterminate" />
+}
+
+@if (store.error(); as error) {
+  <p class="error" role="alert">
+    <mat-icon>error</mat-icon>
+    {{ error }}
+  </p>
+}
+
+@if (store.image(); as image) {
+  <div class="file-bar">
+    <mat-icon>image</mat-icon>
+    <span class="file-name">{{ image.name }}</span>
+    <span class="file-size">{{ image.width }} × {{ image.height }} px</span>
+    <span class="spacer"></span>
+    <button mat-button (click)="fileInput.click()">
+      <mat-icon>swap_horiz</mat-icon>
+      Replace
+    </button>
+    <button mat-button (click)="store.remove()">
+      <mat-icon>delete</mat-icon>
+      Remove
+    </button>
+  </div>
+
+  <div class="layout">
+    <section class="editor" aria-labelledby="editor-heading">
+      <h2 id="editor-heading">Visible area</h2>
+      <p class="hint">
+        Drag outside the rectangle to draw a new one, drag inside it to move it, or drag a handle to
+        resize it.
+      </p>
+
+      <mat-button-toggle-group
+        class="ratio"
+        aria-label="Aspect ratio"
+        [value]="store.ratio().id"
+        (change)="store.setRatio($event.value)"
+      >
+        @for (preset of ratioPresets; track preset.id) {
+          <mat-button-toggle [value]="preset.id">{{ preset.label }}</mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+
+      <app-rect-selector
+        [src]="image.url"
+        [alt]="image.name"
+        [ratio]="store.percentRatio()"
+        [(rect)]="store.rect"
+      />
+
+      @if (pixels(); as px) {
+        <p class="readout" aria-live="polite">
+          x {{ px.x }}, y {{ px.y }} · {{ px.width }} × {{ px.height }} px
+        </p>
+      }
+    </section>
+
+    <section class="preview" aria-labelledby="preview-heading">
+      <h2 id="preview-heading">Preview</h2>
+
+      <mat-button-toggle-group
+        aria-label="Mask mode"
+        [value]="store.mode()"
+        (change)="setMode($event.value)"
+      >
+        <mat-button-toggle value="crop">Crop</mat-button-toggle>
+        <mat-button-toggle value="clip">Clip in place</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <div class="preview-frame">
+        @if (store.mode() === 'crop') {
+          @if (crop(); as crop) {
+            <div class="masked-crop" [style.aspect-ratio]="crop.aspectRatio">
+              <img
+                [src]="image.url"
+                [alt]="image.name"
+                [style.width]="crop.width"
+                [style.left]="crop.left"
+                [style.top]="crop.top"
+              />
+            </div>
+          }
+        } @else {
+          <img
+            class="masked-clip"
+            [src]="image.url"
+            [alt]="image.name"
+            [style.clip-path]="clipPath()"
+          />
+        }
+      </div>
+
+      <div class="css-header">
+        <h3>CSS</h3>
+        <button
+          mat-stroked-button
+          [cdkCopyToClipboard]="css()"
+          (cdkCopyToClipboardCopied)="onCopied($event)"
+        >
+          <mat-icon>content_copy</mat-icon>
+          Copy
+        </button>
+      </div>
+      <pre class="css"><code>{{ css() }}</code></pre>
+    </section>
+  </div>
+} @else {
+  <div
+    class="drop-zone"
+    [class.drag-over]="dragOver()"
+    (dragover)="onDragOver($event)"
+    (dragleave)="dragOver.set(false)"
+    (drop)="onDrop($event)"
+  >
+    <mat-icon class="drop-icon">add_photo_alternate</mat-icon>
+    <p>Drop an image here, or</p>
+    <button mat-flat-button (click)="fileInput.click()">Choose image</button>
+    <p class="hint">The image stays in this browser tab and is cleared when you reload.</p>
+  </div>
+}
