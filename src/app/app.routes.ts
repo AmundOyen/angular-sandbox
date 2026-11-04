@@ -8,5 +8,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/accordion/accordion').then((m) => m.Accordion),
     title: 'Accordion',
   },
+  {
+    path: 'image-mask',
+    loadComponent: () => import('./pages/image-mask/image-mask').then((m) => m.ImageMask),
+    title: 'Image mask',
+  },
   { path: '**', redirectTo: '' },
 ];

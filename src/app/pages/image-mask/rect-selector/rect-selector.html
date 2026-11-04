@@ -1,0 +1,30 @@
+<div
+  #stage
+  class="stage"
+  (pointerdown)="startDraw($event)"
+  (pointermove)="onPointerMove($event)"
+  (pointerup)="onPointerUp()"
+  (pointercancel)="onPointerUp()"
+>
+  <img [src]="src()" [alt]="alt()" draggable="false" />
+  <div class="shade" aria-hidden="true">
+    <div class="shade-hole" [style]="box()"></div>
+  </div>
+  <div
+    class="selection"
+    tabindex="0"
+    role="group"
+    aria-label="Visible area. Arrow keys move it, Shift and arrow keys resize it."
+    [style]="box()"
+    (pointerdown)="startMove($event)"
+    (keydown)="onKeydown($event)"
+  >
+    @for (handle of handles(); track handle) {
+      <span
+        class="handle"
+        [attr.data-handle]="handle"
+        (pointerdown)="startResize($event, handle)"
+      ></span>
+    }
+  </div>
+</div>
