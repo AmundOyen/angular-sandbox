@@ -1,59 +1,58 @@
-# AngularSandbox
+# angular-sandbox
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.4.
+A sandbox for trying out Angular 22 and Angular Material (Material 3), deployed to GitHub Pages.
 
-## Development server
+**Live site:** https://amundoyen.github.io/angular-sandbox/
 
-To start a local development server, run:
+## Pages
 
-```bash
-ng serve
-```
+| Route         | What it shows                                                                                                                                                                                                                                                                 |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`           | Home.                                                                                                                                                                                                                                                                         |
+| `/accordion`  | A `mat-accordion` with three panels of mock data. Drag a panel by its handle to reorder it; the order is saved in `localStorage`.                                                                                                                                             |
+| `/image-mask` | Upload an image and drag a rectangle to mark the visible area. Preview it as a **crop** (the area scaled to fill its container) or **clip in place** (`clip-path: inset(...)`), with aspect-ratio presets and copyable CSS. The image is kept in memory for the session only. |
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Feature pages are lazy-loaded from `src/app/pages/`.
 
-## Code scaffolding
+## Tech stack
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+- Angular 22: standalone components, signals, zoneless change detection
+- Angular Material and CDK 22 with a Material 3 theme (`src/styles.scss`) and Material Symbols icons
+- Vitest with jsdom for unit tests
+- Prettier for formatting
 
-```bash
-ng generate component component-name
-```
+## Getting started
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+Angular CLI 22 needs Node.js `^22.22.3`, `^24.15.0` or `>=26`. The repo pins Node 24 in `.nvmrc`:
 
 ```bash
-ng build
+nvm use
+npm ci
+npm start
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Then open http://localhost:4200/.
 
-## Running unit tests
+## Scripts
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+| Command                    | Description                                                        |
+| -------------------------- | ------------------------------------------------------------------ |
+| `npm start`                | Dev server with live reload.                                       |
+| `npm test`                 | Unit tests in watch mode. Add `-- --watch=false` for a single run. |
+| `npm run build`            | Production build to `dist/angular-sandbox/browser`.                |
+| `npm run build:pages`      | Production build with the `/angular-sandbox/` base href for Pages. |
+| `npx prettier --check src` | Check formatting.                                                  |
 
-```bash
-ng test
-```
+## Deployment
 
-## Running end-to-end tests
+Every push to `main` runs `.github/workflows/deploy-pages.yml`, which:
 
-For end-to-end (e2e) testing, run:
+1. installs dependencies with the Node version from `.nvmrc`,
+2. runs the unit tests,
+3. builds with `npm run build:pages`,
+4. copies `index.html` to `404.html` so deep links such as `/accordion` work on reload,
+5. publishes the build with `actions/deploy-pages`.
 
-```bash
-ng e2e
-```
+The workflow can also be started by hand from the Actions tab. In the repository settings, **Pages → Source** must be set to **GitHub Actions**, and the `github-pages` environment must allow deployments from `main`.
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+If a deploy times out or is cancelled on GitHub's side, re-running it for the same commit fails with "Deployment cancelled", because Pages uses the commit SHA as the deployment ID. Push a new commit to `main` to deploy again.
