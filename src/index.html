@@ -16,6 +16,16 @@
       href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined"
       rel="stylesheet"
     />
+    <script>
+      // Apply a saved light/dark choice before the app starts, to avoid a flash of the other
+      // scheme. Kept in sync with ColorSchemeService (src/app/color-scheme.ts).
+      try {
+        const scheme = localStorage.getItem('angular-sandbox.color-scheme');
+        if (scheme === 'light' || scheme === 'dark') {
+          document.documentElement.style.colorScheme = scheme;
+        }
+      } catch {}
+    </script>
   </head>
   <body>
     <app-root></app-root>

@@ -45,6 +45,7 @@ Colours come from the Material 3 system tokens (`--mat-sys-*`). The widths can b
 
 - Angular 22: standalone components, signals, zoneless change detection
 - Angular Material and CDK 22 with a Material 3 theme (`src/styles.scss`) and Material Symbols icons
+- Light and dark mode: the toolbar switch overrides the system setting and is remembered in `localStorage` (`src/app/color-scheme.ts`)
 - Vitest with jsdom for unit tests
 - Prettier for formatting
 
