@@ -16,6 +16,7 @@ const routes: Routes = [
 describe('App', () => {
   beforeEach(async () => {
     localStorage.clear();
+    document.documentElement.style.colorScheme = '';
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [provideRouter(routes)],
@@ -36,6 +37,17 @@ describe('App', () => {
   it('renders the toolbar with the title', async () => {
     const { element } = await render();
     expect(element.querySelector('mat-toolbar')?.textContent).toContain('angular-sandbox');
+  });
+
+  it('switches between light and dark mode from the toolbar', async () => {
+    const { fixture, element } = await render();
+    const toggle = element.querySelector<HTMLButtonElement>('.color-scheme-toggle')!;
+    expect(toggle.getAttribute('aria-label')).toBe('Switch to dark mode');
+
+    toggle.click();
+    await fixture.whenStable();
+    expect(document.documentElement.style.colorScheme).toBe('dark');
+    expect(toggle.getAttribute('aria-label')).toBe('Switch to light mode');
   });
 
   it('shows a navigator item for each page', async () => {

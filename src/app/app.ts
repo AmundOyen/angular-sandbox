@@ -3,9 +3,11 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 
+import { ColorSchemeService } from './color-scheme';
 import { navIdForUrl, navItemsFromRoutes, restoreNavLayout } from './app-nav';
 import { DndNavigator, NavItem } from './dnd-navigator';
 
@@ -13,13 +15,21 @@ export const APP_NAV_ITEMS_STORAGE_KEY = 'angular-sandbox.app-nav.items';
 export const APP_NAV_EXPANDED_STORAGE_KEY = 'angular-sandbox.app-nav.expanded';
 
 @Component({
-  imports: [RouterOutlet, DndNavigator, MatToolbarModule, MatButtonModule, MatIconModule],
+  imports: [
+    RouterOutlet,
+    DndNavigator,
+    MatToolbarModule,
+    MatButtonModule,
+    MatIconModule,
+    MatTooltipModule,
+  ],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',
 })
 export class App {
   private readonly router = inject(Router);
+  protected readonly colorScheme = inject(ColorSchemeService);
 
   protected readonly title = signal('angular-sandbox');
   protected readonly navItems = signal(
