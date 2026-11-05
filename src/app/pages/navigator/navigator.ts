@@ -3,7 +3,7 @@ import { Component, computed, effect, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { DndNavigator, NavItem, NavNode } from './dnd-navigator';
+import { DndNavigator, NavItem, NavNode } from '../../dnd-navigator';
 
 export const NAV_ITEMS_STORAGE_KEY = 'angular-sandbox.navigator.items';
 export const NAV_EXPANDED_STORAGE_KEY = 'angular-sandbox.navigator.expanded';

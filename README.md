@@ -15,9 +15,11 @@ A sandbox for trying out Angular 22 and Angular Material (Material 3), deployed 
 
 Feature pages are lazy-loaded from `src/app/pages/`.
 
+The app's main navigation is a drag & drop navigator on the left, below the toolbar. A route appears in it when it has `data: { navIcon: '<icon>' }` in `src/app/app.routes.ts`, labelled by its `title`. You can reorder the pages, group them, rename groups and switch between the rail and the drawer. That layout is saved in `localStorage`. New pages are added at the end of a saved layout, and pages that were removed are dropped from it.
+
 ### Drag & drop navigator
 
-The reusable component lives in `src/app/pages/navigator/dnd-navigator/` and is exported from its `index.ts`:
+The reusable component lives in `src/app/dnd-navigator/` and is exported from its `index.ts`:
 
 ```html
 <dnd-navigator

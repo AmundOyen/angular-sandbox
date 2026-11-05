@@ -3,13 +3,11 @@
 :host {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  height: 100dvh;
 }
 
 .app-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  flex: none;
 
   @include mat.toolbar-overrides(
     (
@@ -27,36 +25,8 @@
 .app-title {
   white-space: nowrap;
 
-  // Leave room for the nav links on phones.
   @media (max-width: 599px) {
     display: none;
-  }
-}
-
-.nav {
-  display: flex;
-  flex: 0 1 auto;
-  min-width: 0;
-  margin-left: 24px;
-  overflow-x: auto;
-  scrollbar-width: none;
-
-  @media (max-width: 599px) {
-    margin-left: 0;
-  }
-
-  a {
-    flex-shrink: 0;
-
-    @include mat.button-overrides(
-      (
-        text-label-text-color: var(--mat-sys-on-primary),
-      )
-    );
-  }
-
-  .active {
-    background-color: color-mix(in srgb, var(--mat-sys-on-primary) 16%, transparent);
   }
 }
 
@@ -64,6 +34,22 @@
   flex: 1 1 auto;
 }
 
+// The navigator and the page scroll independently below the toolbar.
+.shell {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.app-nav {
+  flex: none;
+  background: var(--mat-sys-surface-container);
+  border-right: 1px solid var(--mat-sys-outline-variant);
+}
+
 .content {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
   padding: 16px;
 }

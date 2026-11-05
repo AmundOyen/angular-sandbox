@@ -23,7 +23,7 @@ h1 {
 .demo {
   display: flex;
   // The rail scrolls on its own, so give it a bounded height below the toolbar.
-  height: max(420px, calc(100dvh - 176px));
+  height: max(420px, calc(100dvh - 160px));
   overflow: hidden;
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 16px;
