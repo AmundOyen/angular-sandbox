@@ -3,7 +3,13 @@
 // components according to the Material 3 design spec.
 // Learn more about theming and how to use it for your application's
 // custom components at https://material.angular.dev/guide/theming
+@use '@angular/cdk';
 @use '@angular/material' as mat;
+
+// Hides the CDK LiveAnnouncer region (used by the navigator to announce moves) from view
+// while keeping it readable by screen readers. Without it, the announcement renders as text
+// below the app and makes the page scroll.
+@include cdk.a11y-visually-hidden();
 
 html {
   height: 100%;
