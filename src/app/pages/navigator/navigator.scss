@@ -1,0 +1,65 @@
+:host {
+  display: block;
+  max-width: 1200px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+h1 {
+  margin: 0 0 4px;
+}
+
+.hint {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}
+
+.demo {
+  display: flex;
+  // The rail scrolls on its own, so give it a bounded height below the toolbar.
+  height: max(420px, calc(100dvh - 176px));
+  overflow: hidden;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 16px;
+}
+
+.rail {
+  flex: none;
+  background: var(--mat-sys-surface-container);
+  border-right: 1px solid var(--mat-sys-outline-variant);
+}
+
+.demo-content {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 24px;
+}
+
+.selected {
+  margin: 0;
+  font: var(--mat-sys-headline-small);
+}
+
+h3 {
+  font: var(--mat-sys-title-medium);
+}
+
+ul {
+  padding-left: 20px;
+  line-height: 1.6;
+}
+
+pre {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--mat-sys-surface-container-low);
+  font-size: 12px;
+  overflow: auto;
+}

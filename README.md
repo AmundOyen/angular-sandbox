@@ -6,13 +6,38 @@ A sandbox for trying out Angular 22 and Angular Material (Material 3), deployed 
 
 ## Pages
 
-| Route         | What it shows                                                                                                                                                                                                                                                                 |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`           | Home.                                                                                                                                                                                                                                                                         |
-| `/accordion`  | A `mat-accordion` with three panels of mock data. Drag a panel by its handle to reorder it; the order is saved in `localStorage`.                                                                                                                                             |
-| `/image-mask` | Upload an image and drag a rectangle to mark the visible area. Preview it as a **crop** (the area scaled to fill its container) or **clip in place** (`clip-path: inset(...)`), with aspect-ratio presets and copyable CSS. The image is kept in memory for the session only. |
+| Route         | What it shows                                                                                                                                                                                                                                                                                |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`           | Home.                                                                                                                                                                                                                                                                                        |
+| `/accordion`  | A `mat-accordion` with three panels of mock data. Drag a panel by its handle to reorder it; the order is saved in `localStorage`.                                                                                                                                                            |
+| `/image-mask` | Upload an image and drag a rectangle to mark the visible area. Preview it as a **crop** (the area scaled to fill its container) or **clip in place** (`clip-path: inset(...)`), with aspect-ratio presets and copyable CSS. The image is kept in memory for the session only.                |
+| `/navigator`  | A drag-and-drop navigation rail (migrated from [dnd-nav](https://github.com/AmundOyen/dnd-nav)). Reorder items, drop one item on another to group them, drag between groups, rename groups with double-click or F2, and toggle between rail and drawer. The tree is saved in `localStorage`. |
 
 Feature pages are lazy-loaded from `src/app/pages/`.
+
+### Drag & drop navigator
+
+The reusable component lives in `src/app/pages/navigator/dnd-navigator/` and is exported from its `index.ts`:
+
+```html
+<dnd-navigator
+  aria-label="Main"
+  [(items)]="items"
+  [(expanded)]="expanded"
+  [activeId]="activeId()"
+  (itemSelect)="activeId.set($event.id)"
+/>
+```
+
+| API            | Type                        | Description                                                                          |
+| -------------- | --------------------------- | ------------------------------------------------------------------------------------ |
+| `items`        | `model<readonly NavNode[]>` | The tree. Every change emits a new, immutable tree via `itemsChange`.                |
+| `expanded`     | `model<boolean>`            | `true` shows the wide drawer, `false` the rail. Toggled by the built-in menu button. |
+| `activeId`     | `input<string \| null>`     | Highlights the selected item.                                                        |
+| `groupFactory` | `input<GroupFactory>`       | Creates a group when two items are combined (id and default label).                  |
+| `itemSelect`   | `output<NavItem>`           | Emitted when an item is clicked (not after a drag).                                  |
+
+Colours come from the Material 3 system tokens (`--mat-sys-*`). The widths can be changed with `--dnd-nav-width` (rail, default `88px`) and `--dnd-nav-drawer-width` (drawer, default `240px`). The tree operations (`moveNode`, `canDrop`, `normalize`, `renameGroup`) are pure functions in `nav-tree.ts`.
 
 ## Tech stack
 
