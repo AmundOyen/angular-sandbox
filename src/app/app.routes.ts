@@ -13,5 +13,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/image-mask/image-mask').then((m) => m.ImageMask),
     title: 'Image mask',
   },
+  {
+    path: 'navigator',
+    loadComponent: () => import('./pages/navigator/navigator').then((m) => m.Navigator),
+    title: 'Navigator',
+  },
   { path: '**', redirectTo: '' },
 ];
