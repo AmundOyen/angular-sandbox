@@ -24,6 +24,10 @@
 
 .app-title {
   white-space: nowrap;
+
+  @media (max-width: 599px) {
+    display: none;
+  }
 }
 
 .spacer {
