@@ -50,6 +50,22 @@
       </ul>
     </section>
 
+    @if (experimental()) {
+      <section>
+        <h3>Experimental: deep grouping</h3>
+        <ul>
+          <li>
+            Open a group and drop an item on the middle of one of its items to put both in a menu.
+          </li>
+          <li>Drop an item on the middle of a menu to add it, or hover to open the menu.</li>
+          <li>Drag items within an open menu to reorder them, or out of it into the rail.</li>
+          <li>A menu left with one item is replaced by that item.</li>
+          <li>Press F2 on a menu, or use "Rename menu" inside it, to rename it.</li>
+          <li>Turn the flag off to see menus flattened into their group.</li>
+        </ul>
+      </section>
+    }
+
     <section>
       <h3>Emitted tree</h3>
       <pre>{{ items() | json }}</pre>

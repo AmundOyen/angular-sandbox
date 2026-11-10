@@ -21,7 +21,7 @@
           [ngTemplateOutletContext]="{ $implicit: node, parent: null }"
         />
       </li>
-    } @else {
+    } @else if (node.kind === 'group') {
       <li
         class="nav-group"
         data-drop="group"
@@ -72,12 +72,101 @@
         @if (isGroupOpen(node)) {
           <ul class="group-children" role="group" [attr.aria-label]="node.label">
             @for (child of node.children; track child.id) {
-              <li class="nav-slot">
-                <ng-container
-                  [ngTemplateOutlet]="itemTile"
-                  [ngTemplateOutletContext]="{ $implicit: child, parent: node.id }"
-                />
-              </li>
+              @if (child.kind === 'item') {
+                <li class="nav-slot">
+                  <ng-container
+                    [ngTemplateOutlet]="itemTile"
+                    [ngTemplateOutletContext]="{ $implicit: child, parent: node.id }"
+                  />
+                </li>
+              } @else if (!experimental()) {
+                <!-- Experimental flag off: show the menu's items as plain group items. -->
+                @for (menuChild of child.children; track menuChild.id) {
+                  <li class="nav-slot">
+                    <ng-container
+                      [ngTemplateOutlet]="itemTile"
+                      [ngTemplateOutletContext]="{ $implicit: menuChild, parent: child.id }"
+                    />
+                  </li>
+                }
+              } @else {
+                <li class="nav-slot">
+                  @if (editingGroupId() === child.id) {
+                    <div class="tile editing">
+                      <mat-icon class="tile-icon">{{ menuIcon }}</mat-icon>
+                      <input
+                        #renameInput
+                        class="rename-input"
+                        aria-label="Menu name"
+                        [value]="child.label"
+                        (keydown.enter)="commitRename(child, renameInput.value)"
+                        (keydown.escape)="cancelRename()"
+                        (blur)="commitRename(child, renameInput.value)"
+                      />
+                    </div>
+                  } @else {
+                    <button
+                      #menuTrigger
+                      type="button"
+                      class="tile menu-trigger"
+                      data-drop="menu-trigger"
+                      [attr.data-id]="child.id"
+                      [attr.data-parent]="node.id"
+                      [matMenuTriggerFor]="menuPanel"
+                      (menuOpened)="placeBesideTrigger(child.id, menuPanel)"
+                      [class.active]="containsActive(child)"
+                      [class.dragging]="draggedId() === child.id"
+                      [class]="dropClass(child.id)"
+                      [title]="child.label + ' (F2 to rename)'"
+                      (pointerdown)="onPointerDown($event, child)"
+                      (keydown.f2)="startRename(child, $event)"
+                      (contextmenu)="dragging() && $event.preventDefault()"
+                    >
+                      <span class="tile-icon group-icon">
+                        <mat-icon>{{ menuIcon }}</mat-icon>
+                        <span class="badge">{{ child.children.length }}</span>
+                      </span>
+                      <span class="tile-label">{{ child.label }}</span>
+                      <mat-icon class="chevron" aria-hidden="true">arrow_right</mat-icon>
+                    </button>
+                  }
+                  <mat-menu #menuPanel="matMenu" xPosition="after" overlapTrigger>
+                    <ng-template matMenuContent>
+                      <div
+                        class="menu-items"
+                        data-drop="menu"
+                        [attr.data-id]="child.id"
+                        [attr.data-nav]="navId"
+                      >
+                        @for (menuChild of child.children; track menuChild.id) {
+                          <button
+                            mat-menu-item
+                            type="button"
+                            class="menu-entry"
+                            data-drop="menu-item"
+                            [attr.data-id]="menuChild.id"
+                            [attr.data-parent]="child.id"
+                            [attr.aria-current]="activeId() === menuChild.id ? 'page' : null"
+                            [class.active]="activeId() === menuChild.id"
+                            [class.dragging]="draggedId() === menuChild.id"
+                            [class]="dropClass(menuChild.id)"
+                            (pointerdown)="onPointerDown($event, menuChild)"
+                            (click)="onItemClick(menuChild)"
+                            (contextmenu)="dragging() && $event.preventDefault()"
+                          >
+                            <mat-icon>{{ menuChild.icon }}</mat-icon>
+                            <span>{{ menuChild.label }}</span>
+                          </button>
+                        }
+                      </div>
+                      <button mat-menu-item type="button" (click)="startRename(child)">
+                        <mat-icon>edit</mat-icon>
+                        <span>Rename menu</span>
+                      </button>
+                    </ng-template>
+                  </mat-menu>
+                </li>
+              }
             }
           </ul>
         }
@@ -118,7 +207,11 @@
     <!-- Shrinks towards the pointer so drop indicators under the preview stay visible. -->
     <div class="tile" [style.transform-origin]="drag.offsetX + 'px ' + drag.offsetY + 'px'">
       <mat-icon class="tile-icon">{{
-        drag.node.kind === 'group' ? 'folder' : drag.node.icon
+        drag.node.kind === 'group'
+          ? 'folder'
+          : drag.node.kind === 'menu'
+            ? menuIcon
+            : drag.node.icon
       }}</mat-icon>
       <span class="tile-label">{{ drag.node.label }}</span>
     </div>
