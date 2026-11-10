@@ -9,6 +9,7 @@ import { NavItem, NavNode } from './nav-tree';
   template: `<dnd-navigator
     [(items)]="items"
     [(expanded)]="expanded"
+    [experimental]="experimental()"
     (itemSelect)="selected.set($event)"
   />`,
 })
@@ -27,6 +28,7 @@ class Host {
   ]);
   readonly selected = signal<NavItem | null>(null);
   readonly expanded = signal(false);
+  readonly experimental = signal(false);
 }
 
 describe('DndNavigator', () => {
@@ -39,6 +41,15 @@ describe('DndNavigator', () => {
     fixture = TestBed.createComponent(Host);
     element = fixture.nativeElement;
     await fixture.whenStable();
+  });
+
+  it('leaves experimental behaviour off unless opted in', async () => {
+    const navigator = query('dnd-navigator');
+    expect(navigator.classList).not.toContain('experimental');
+
+    fixture.componentInstance.experimental.set(true);
+    await fixture.whenStable();
+    expect(navigator.classList).toContain('experimental');
   });
 
   it('renders each item with its icon above the label', () => {

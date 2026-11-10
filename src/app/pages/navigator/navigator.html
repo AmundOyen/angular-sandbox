@@ -6,10 +6,18 @@
       browser.
     </p>
   </div>
-  <button matButton="tonal" (click)="reset()">
-    <mat-icon>restart_alt</mat-icon>
-    Reset
-  </button>
+  <div class="page-actions">
+    <mat-slide-toggle
+      hideIcon
+      [checked]="experimental()"
+      (change)="experimental.set($event.checked)"
+      >Experimental</mat-slide-toggle
+    >
+    <button matButton="tonal" (click)="reset()">
+      <mat-icon>restart_alt</mat-icon>
+      Reset
+    </button>
+  </div>
 </header>
 
 <div class="demo">
@@ -19,6 +27,7 @@
     [(items)]="items"
     [(expanded)]="navExpanded"
     [activeId]="activeId()"
+    [experimental]="experimental()"
     (itemSelect)="active.set($event)"
   />
 

@@ -1,6 +1,7 @@
 import {
   Component,
   DestroyRef,
+  booleanAttribute,
   DOCUMENT,
   ElementRef,
   computed,
@@ -79,6 +80,7 @@ interface ActiveDrag {
     role: 'navigation',
     '[class.is-dragging]': 'dragging() !== null',
     '[class.drawer]': 'expanded()',
+    '[class.experimental]': 'experimental()',
   },
 })
 export class DndNavigator {
@@ -89,6 +91,12 @@ export class DndNavigator {
   readonly activeId = input<string | null>(null);
   /** Creates groups when two items are combined. Override to control ids and default labels. */
   readonly groupFactory = input<GroupFactory>(createGroup);
+  /**
+   * Opts in to experimental navigator behaviour that is still being tried out. Off by default, so
+   * existing usages are unaffected. Behaviour behind this flag may change or be removed at any time.
+   * Branch on it in code with `experimental()`, or in styles with `:host(.experimental)`.
+   */
+  readonly experimental = input(false, { transform: booleanAttribute });
 
   readonly itemSelect = output<NavItem>();
 
