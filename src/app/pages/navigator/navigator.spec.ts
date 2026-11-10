@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NAV_ITEMS_STORAGE_KEY, Navigator } from './navigator';
+import { NAV_EXPERIMENTAL_STORAGE_KEY, NAV_ITEMS_STORAGE_KEY, Navigator } from './navigator';
 
 describe('Navigator', () => {
   let fixture: ComponentFixture<Navigator>;
@@ -41,5 +41,17 @@ describe('Navigator', () => {
     localStorage.setItem(NAV_ITEMS_STORAGE_KEY, 'not json');
     await render();
     expect(labels()).toContain('Home');
+  });
+
+  it('toggles the experimental flag and remembers it', async () => {
+    await render();
+    const element = fixture.nativeElement as HTMLElement;
+    const navigator = element.querySelector('dnd-navigator')!;
+    expect(navigator.classList).not.toContain('experimental');
+
+    element.querySelector<HTMLButtonElement>('mat-slide-toggle button')!.click();
+    await fixture.whenStable();
+    expect(navigator.classList).toContain('experimental');
+    expect(localStorage.getItem(NAV_EXPERIMENTAL_STORAGE_KEY)).toBe('true');
   });
 });

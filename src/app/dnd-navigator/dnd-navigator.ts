@@ -1,8 +1,11 @@
 import {
   Component,
   DestroyRef,
+  booleanAttribute,
   DOCUMENT,
   ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -11,20 +14,26 @@ import {
   output,
   signal,
   viewChild,
+  viewChildren,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { MatIconButton } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenu, MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 
 import {
   DropTarget,
   GroupFactory,
+  MenuFactory,
   NavGroup,
   NavItem,
+  NavMenu,
   NavNode,
+  ancestorIds,
   canDrop,
   createGroup,
+  createMenu,
   findNode,
   moveNode,
   renameGroup,
@@ -38,6 +47,8 @@ const TOUCH_DRAG_DELAY = 300;
 const HOVER_EXPAND_DELAY = 500;
 /** Share of a root item's height at the top/bottom that means before/after instead of combine. */
 const EDGE_ZONE = 0.3;
+
+let nextId = 0;
 
 interface PendingDrag {
   readonly node: NavNode;
@@ -67,18 +78,27 @@ interface ActiveDrag {
  * - Hover over a collapsed group to expand it, or drop on its header to append to it.
  * - Groups left with a single item are ungrouped automatically.
  *
+ * With `experimental` set, items can also be grouped one level deeper ("deep grouping"):
+ * - Drop on the middle of an item inside a group to put both items in a menu. A new menu trigger
+ *   takes the item's place in the group and opens the items in a `MatMenu`.
+ * - Drop on the middle of a menu trigger to append to the menu; hover to open it while dragging.
+ * - Drag items within an open menu to reorder them, or out of it into the rail.
+ * - Menus left with a single item are replaced by that item.
+ * Without the flag, existing menus are shown flattened into their group.
+ *
  * Bind with `[(items)]`; every change emits a new, immutable tree. The button at the top switches
  * between the compact rail and a wide drawer; bind `[(expanded)]` to control or remember that state.
  */
 @Component({
   selector: 'dnd-navigator',
-  imports: [MatIconButton, MatIconModule, NgTemplateOutlet],
+  imports: [MatIconButton, MatIconModule, MatMenuModule, NgTemplateOutlet],
   templateUrl: './dnd-navigator.html',
   styleUrl: './dnd-navigator.scss',
   host: {
     role: 'navigation',
     '[class.is-dragging]': 'dragging() !== null',
     '[class.drawer]': 'expanded()',
+    '[class.experimental]': 'experimental()',
   },
 })
 export class DndNavigator {
@@ -89,6 +109,14 @@ export class DndNavigator {
   readonly activeId = input<string | null>(null);
   /** Creates groups when two items are combined. Override to control ids and default labels. */
   readonly groupFactory = input<GroupFactory>(createGroup);
+  /**
+   * Opts in to experimental navigator behaviour that is still being tried out. Off by default, so
+   * existing usages are unaffected. Behaviour behind this flag may change or be removed at any time.
+   * Branch on it in code with `experimental()`, or in styles with `:host(.experimental)`.
+   */
+  readonly experimental = input(false, { transform: booleanAttribute });
+  /** Creates menus when two items in a group are combined (experimental). */
+  readonly menuFactory = input<MenuFactory>(createMenu);
 
   readonly itemSelect = output<NavItem>();
 
@@ -99,17 +127,25 @@ export class DndNavigator {
   protected readonly editingGroupId = signal<string | null>(null);
 
   protected readonly draggedId = computed(() => this.dragging()?.node.id ?? null);
+  /** Marks this navigator's menu panels, which render in an overlay outside the host. */
+  protected readonly navId = `dnd-nav-${nextId++}`;
+  protected readonly menuIcon = 'apps';
 
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly document = inject(DOCUMENT);
   private readonly announcer = inject(LiveAnnouncer);
+  private readonly injector = inject(Injector);
   private readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
+  private readonly menuTriggers = viewChildren('menuTrigger', { read: MatMenuTrigger });
+  private readonly menuTriggerElements = viewChildren('menuTrigger', { read: ElementRef });
 
   private pending: PendingDrag | null = null;
   /** Groups opened by hovering during the current drag; they close again unless dropped into. */
   private autoExpanded = new Set<string>();
   private hoverTimer?: ReturnType<typeof setTimeout>;
   private hoverGroupId: string | null = null;
+  /** Menu opened by hovering its trigger during the current drag. */
+  private autoOpenedMenu: string | null = null;
   private suppressClickUntil = 0;
 
   constructor() {
@@ -122,14 +158,24 @@ export class DndNavigator {
     // when it starts, so a listener added once the drag begins would be too late.
     const host = this.host.nativeElement;
     host.addEventListener('touchmove', this.onTouchMove, { passive: false });
+    // Swallow the click that follows a drop before it reaches handlers such as a menu trigger's or
+    // the menu panel's (which closes the menu). The panel renders in an overlay outside the host.
+    this.document.addEventListener('click', this.onClickCapture, true);
     inject(DestroyRef).onDestroy(() => {
       host.removeEventListener('touchmove', this.onTouchMove);
+      this.document.removeEventListener('click', this.onClickCapture, true);
       this.endDrag();
     });
   }
 
   protected isGroupOpen(group: NavGroup): boolean {
     return this.openGroups().has(group.id);
+  }
+
+  /** Whether the active item is inside `menu`, so its trigger is highlighted. */
+  protected containsActive(menu: NavMenu): boolean {
+    const activeId = this.activeId();
+    return menu.children.some((child) => child.id === activeId);
   }
 
   protected dropClass(id: string): string | null {
@@ -165,12 +211,12 @@ export class DndNavigator {
     this.expanded.update((expanded) => !expanded);
   }
 
-  protected startRename(group: NavGroup, event?: Event): void {
+  protected startRename(group: NavGroup | NavMenu, event?: Event): void {
     event?.preventDefault();
     this.editingGroupId.set(group.id);
   }
 
-  protected commitRename(group: NavGroup, value: string): void {
+  protected commitRename(group: NavGroup | NavMenu, value: string): void {
     if (this.editingGroupId() !== group.id) {
       return;
     }
@@ -183,6 +229,27 @@ export class DndNavigator {
 
   protected cancelRename(): void {
     this.editingGroupId.set(null);
+  }
+
+  /**
+   * Shifts an open menu's panel beside its trigger, like a flyout, so the rail stays visible as a
+   * drop target while dragging items out of the menu. MatMenu has no input for this placement.
+   */
+  protected placeBesideTrigger(menuId: string, menu: MatMenu): void {
+    const index = this.menuTriggerElements().findIndex(
+      (element) => element.nativeElement.dataset['id'] === menuId,
+    );
+    const trigger: HTMLElement | undefined = this.menuTriggerElements()[index]?.nativeElement;
+    // The panel's id is bound on the next render.
+    afterNextRender(
+      () => {
+        const panel = this.document.getElementById(menu.panelId);
+        if (trigger && panel) {
+          panel.style.marginInlineStart = `${trigger.offsetWidth + 8}px`;
+        }
+      },
+      { injector: this.injector },
+    );
   }
 
   // ---- Drag and drop -----------------------------------------------------
@@ -246,6 +313,13 @@ export class DndNavigator {
 
   private readonly onPointerCancel = (): void => this.endDrag();
 
+  private readonly onClickCapture = (event: MouseEvent): void => {
+    if (this.clickSuppressed()) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+  };
+
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape' && this.dragging()) {
       event.preventDefault();
@@ -280,23 +354,23 @@ export class DndNavigator {
 
   private drop(node: NavNode, target: DropTarget | null): void {
     const before = this.items();
-    const createdIds: string[] = [];
-    const factory: GroupFactory = (children) => {
-      const group = this.groupFactory()(children);
-      createdIds.push(group.id);
-      return group;
-    };
-    const after = target ? moveNode(before, node.id, target, factory) : before;
+    const after = target
+      ? moveNode(before, node.id, target, {
+          groupFactory: this.groupFactory(),
+          menuFactory: this.menuFactory(),
+          allowMenus: this.experimental(),
+        })
+      : before;
 
-    const keepOpen = new Set(createdIds);
-    if (target?.kind === 'into') {
-      keepOpen.add(target.groupId);
-    } else if (target?.kind === 'before' || target?.kind === 'after') {
-      const parentId = findNode(before, target.refId)?.parentId;
-      if (parentId) {
-        keepOpen.add(parentId);
-      }
+    // Keep whatever now contains the dropped node open; close everything opened along the way.
+    const containers = after !== before ? ancestorIds(after, node.id) : [];
+    const keepOpen = new Set(containers);
+    if (after !== before) {
+      this.closeMenus(containers[0]);
+    } else if (this.autoOpenedMenu) {
+      this.menuTrigger(this.autoOpenedMenu)?.closeMenu();
     }
+    this.autoOpenedMenu = null;
 
     const open = new Set(this.openGroups());
     for (const id of this.autoExpanded) {
@@ -321,6 +395,11 @@ export class DndNavigator {
   }
 
   private endDrag(): void {
+    if (this.autoOpenedMenu) {
+      // Cancelled drags close a menu that sprang open.
+      this.menuTrigger(this.autoOpenedMenu)?.closeMenu();
+      this.autoOpenedMenu = null;
+    }
     if (this.pending) {
       clearTimeout(this.pending.touchTimer);
       this.pending = null;
@@ -350,13 +429,40 @@ export class DndNavigator {
       return;
     }
     this.clearHoverTimer();
-    if (groupId && !this.openGroups().has(groupId)) {
+    if (!groupId) {
+      return;
+    }
+    const isMenu = findNode(this.items(), groupId)?.node.kind === 'menu';
+    if (isMenu ? !this.menuTrigger(groupId)?.menuOpen : !this.openGroups().has(groupId)) {
       this.hoverGroupId = groupId;
       this.hoverTimer = setTimeout(() => {
-        this.autoExpanded.add(groupId);
-        this.setGroupOpen(groupId, true);
+        if (isMenu) {
+          this.closeMenus();
+          this.menuTrigger(groupId)?.openMenu();
+          this.autoOpenedMenu = groupId;
+        } else {
+          this.autoExpanded.add(groupId);
+          this.setGroupOpen(groupId, true);
+        }
       }, HOVER_EXPAND_DELAY);
     }
+  }
+
+  private menuTrigger(menuId: string): MatMenuTrigger | undefined {
+    const index = this.menuTriggerElements().findIndex(
+      (element) => element.nativeElement.dataset['id'] === menuId,
+    );
+    return index === -1 ? undefined : this.menuTriggers()[index];
+  }
+
+  /** Closes open menus, except `keepId` when given. */
+  private closeMenus(keepId?: string): void {
+    this.menuTriggerElements().forEach((element, index) => {
+      const trigger = this.menuTriggers()[index];
+      if (trigger?.menuOpen && element.nativeElement.dataset['id'] !== keepId) {
+        trigger.closeMenu();
+      }
+    });
   }
 
   private clearHoverTimer(): void {
@@ -367,9 +473,18 @@ export class DndNavigator {
 
   /** Maps a pointer position to a drop target, based on the element under the pointer. */
   private resolveTarget(dragged: NavNode, x: number, y: number): DropTarget | null {
-    const element = this.document.elementFromPoint(x, y);
+    // An open menu's backdrop covers the page, and its overlay pane extends over the rail (see
+    // `placeBesideTrigger`), so look underneath both. The menu panel itself is still hit.
+    const element = this.document
+      .elementsFromPoint(x, y)
+      .find(
+        (el) =>
+          !el.classList.contains('cdk-overlay-backdrop') &&
+          !el.classList.contains('cdk-overlay-pane'),
+      );
     const zone = element?.closest<HTMLElement>('[data-drop]');
-    if (!zone || !this.host.nativeElement.contains(zone)) {
+    const inMenuPanel = zone?.closest<HTMLElement>('[data-nav]')?.dataset['nav'] === this.navId;
+    if (!zone || !(inMenuPanel || this.host.nativeElement.contains(zone))) {
       return null;
     }
     const nodes = this.items();
@@ -395,7 +510,25 @@ export class DndNavigator {
       const rootRect = rootZone.getBoundingClientRect();
       const refId = rootZone.dataset['rootId']!;
       target = { kind: y < rootRect.top + rootRect.height / 2 ? 'before' : 'after', refId };
-    } else if (kind === 'item' && zone.dataset['parent']) {
+    } else if (kind === 'menu') {
+      // Padding around an open menu's items.
+      target = { kind: 'into', groupId: id };
+    } else if (dragged.kind === 'menu' || kind === 'menu-item') {
+      // Menus only move between a group's children, and menu items can't combine (no nesting).
+      target =
+        kind === 'item' || kind === 'menu-trigger' || kind === 'menu-item'
+          ? { kind: ratio < 0.5 ? 'before' : 'after', refId: id }
+          : kind === 'group-header' || kind === 'group'
+            ? { kind: 'into', groupId: id }
+            : null;
+    } else if (kind === 'menu-trigger') {
+      target =
+        ratio < EDGE_ZONE
+          ? { kind: 'before', refId: id }
+          : ratio > 1 - EDGE_ZONE
+            ? { kind: 'after', refId: id }
+            : { kind: 'into', groupId: id };
+    } else if (kind === 'item' && zone.dataset['parent'] && !this.experimental()) {
       target = { kind: ratio < 0.5 ? 'before' : 'after', refId: id };
     } else if (kind === 'item') {
       target =
@@ -419,7 +552,9 @@ export class DndNavigator {
       target = null;
     }
 
-    return target && canDrop(nodes, dragged.id, target) ? target : null;
+    return target && canDrop(nodes, dragged.id, target, { allowMenus: this.experimental() })
+      ? target
+      : null;
   }
 
   private describeDrop(node: NavNode, target: DropTarget, tree: readonly NavNode[]): string {
@@ -429,8 +564,13 @@ export class DndNavigator {
         return `${node.label} moved to the end`;
       case 'into':
         return `${node.label} added to ${label(target.groupId)}`;
-      case 'combine':
-        return `${node.label} grouped with ${label(target.refId)}`;
+      case 'combine': {
+        const created = findNode(tree, node.id)?.parentId;
+        const kind = created && findNode(tree, created)?.node.kind === 'menu' ? 'menu' : 'group';
+        return kind === 'menu'
+          ? `${node.label} put in a menu with ${label(target.refId)}`
+          : `${node.label} grouped with ${label(target.refId)}`;
+      }
       default:
         return `${node.label} moved ${target.kind} ${label(target.refId)}`;
     }

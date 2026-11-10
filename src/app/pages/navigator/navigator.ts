@@ -2,11 +2,13 @@ import { JsonPipe } from '@angular/common';
 import { Component, computed, effect, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 
 import { DndNavigator, NavItem, NavNode } from '../../dnd-navigator';
 
 export const NAV_ITEMS_STORAGE_KEY = 'angular-sandbox.navigator.items';
 export const NAV_EXPANDED_STORAGE_KEY = 'angular-sandbox.navigator.expanded';
+export const NAV_EXPERIMENTAL_STORAGE_KEY = 'angular-sandbox.navigator.experimental';
 
 export const DEFAULT_NAV_ITEMS: readonly NavNode[] = [
   { kind: 'item', id: 'home', label: 'Home', icon: 'home' },
@@ -29,7 +31,7 @@ export const DEFAULT_NAV_ITEMS: readonly NavNode[] = [
 ];
 
 @Component({
-  imports: [DndNavigator, JsonPipe, MatButtonModule, MatIconModule],
+  imports: [DndNavigator, JsonPipe, MatButtonModule, MatIconModule, MatSlideToggle],
   selector: 'app-navigator',
   styleUrl: './navigator.scss',
   templateUrl: './navigator.html',
@@ -37,12 +39,14 @@ export const DEFAULT_NAV_ITEMS: readonly NavNode[] = [
 export class Navigator {
   protected readonly items = signal(loadItems());
   protected readonly navExpanded = signal(readStorage(NAV_EXPANDED_STORAGE_KEY) === 'true');
+  protected readonly experimental = signal(readStorage(NAV_EXPERIMENTAL_STORAGE_KEY) === 'true');
   protected readonly active = signal<NavItem | null>(null);
   protected readonly activeId = computed(() => this.active()?.id ?? null);
 
   constructor() {
     effect(() => writeStorage(NAV_ITEMS_STORAGE_KEY, JSON.stringify(this.items())));
     effect(() => writeStorage(NAV_EXPANDED_STORAGE_KEY, String(this.navExpanded())));
+    effect(() => writeStorage(NAV_EXPERIMENTAL_STORAGE_KEY, String(this.experimental())));
   }
 
   protected reset(): void {

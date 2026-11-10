@@ -291,6 +291,42 @@ ul {
   }
 }
 
+// Experimental deep grouping: menu triggers inside groups and their (overlay) menu items.
+.tile.menu-trigger.drop-into {
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  box-shadow: inset 0 0 0 2px var(--mat-sys-primary);
+}
+
+.menu-items {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.menu-entry {
+  position: relative;
+  cursor: grab;
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+
+  &.active {
+    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-on-secondary-container);
+  }
+
+  &.dragging {
+    opacity: 0.35;
+  }
+
+  &.drop-before::before {
+    top: -1px;
+  }
+
+  &.drop-after::after {
+    bottom: -1px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :host,
   .tile,

@@ -9,6 +9,7 @@ import { NavItem, NavNode } from './nav-tree';
   template: `<dnd-navigator
     [(items)]="items"
     [(expanded)]="expanded"
+    [experimental]="experimental()"
     (itemSelect)="selected.set($event)"
   />`,
 })
@@ -27,6 +28,7 @@ class Host {
   ]);
   readonly selected = signal<NavItem | null>(null);
   readonly expanded = signal(false);
+  readonly experimental = signal(false);
 }
 
 describe('DndNavigator', () => {
@@ -39,6 +41,15 @@ describe('DndNavigator', () => {
     fixture = TestBed.createComponent(Host);
     element = fixture.nativeElement;
     await fixture.whenStable();
+  });
+
+  it('leaves experimental behaviour off unless opted in', async () => {
+    const navigator = query('dnd-navigator');
+    expect(navigator.classList).not.toContain('experimental');
+
+    fixture.componentInstance.experimental.set(true);
+    await fixture.whenStable();
+    expect(navigator.classList).toContain('experimental');
   });
 
   it('renders each item with its icon above the label', () => {
@@ -112,5 +123,57 @@ describe('DndNavigator', () => {
     await fixture.whenStable();
 
     expect(fixture.componentInstance.items()[1].label).toBe('Media');
+  });
+
+  describe('deep grouping', () => {
+    beforeEach(async () => {
+      fixture.componentInstance.items.set([
+        {
+          kind: 'group',
+          id: 'media',
+          label: 'Media',
+          children: [
+            { kind: 'item', id: 'photos', label: 'Photos', icon: 'photo' },
+            {
+              kind: 'menu',
+              id: 'audio',
+              label: 'Audio',
+              children: [
+                { kind: 'item', id: 'music', label: 'Music', icon: 'music_note' },
+                { kind: 'item', id: 'podcasts', label: 'Podcasts', icon: 'podcasts' },
+              ],
+            },
+          ],
+        },
+      ]);
+      await fixture.whenStable();
+      query('[data-drop="group-header"]').click();
+      await fixture.whenStable();
+    });
+
+    it('flattens menus into their group while the flag is off', () => {
+      expect(element.querySelector('[data-drop="menu-trigger"]')).toBeNull();
+      expect(query('[data-id="music"]').dataset['parent']).toBe('audio');
+      expect(query('[data-id="podcasts"]')).toBeTruthy();
+    });
+
+    it('shows a menu trigger that opens the items in a menu when the flag is on', async () => {
+      fixture.componentInstance.experimental.set(true);
+      await fixture.whenStable();
+
+      const trigger = query('[data-drop="menu-trigger"]');
+      expect(trigger.textContent).toContain('Audio');
+      expect(element.querySelector('[data-id="music"]')).toBeNull();
+
+      trigger.click();
+      await fixture.whenStable();
+      const entry = document.querySelector<HTMLElement>(
+        '[data-drop="menu-item"][data-id="music"]',
+      )!;
+      expect(entry).toBeTruthy();
+
+      entry.click();
+      expect(fixture.componentInstance.selected()?.id).toBe('music');
+    });
   });
 });
