@@ -4,8 +4,6 @@ import {
   booleanAttribute,
   DOCUMENT,
   ElementRef,
-  Injector,
-  afterNextRender,
   computed,
   effect,
   inject,
@@ -20,7 +18,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { MatIconButton } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenu, MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 
 import {
   DropTarget,
@@ -35,6 +33,7 @@ import {
   createGroup,
   createMenu,
   findNode,
+  flattenMenu,
   moveNode,
   renameGroup,
 } from './nav-tree';
@@ -84,7 +83,9 @@ interface ActiveDrag {
  * - Drop on the middle of a menu trigger to append to the menu; hover to open it while dragging.
  * - Drag items within an open menu to reorder them, or out of it into the rail.
  * - Menus left with a single item are replaced by that item.
- * Without the flag, existing menus are shown flattened into their group.
+ * - While a menu is open the rail stays usable; a click outside the menu closes it.
+ * Without the flag, existing menus are shown flattened into their group, and dropping next to one
+ * of their items flattens that menu in the tree so the item lands where it was dropped.
  *
  * Bind with `[(items)]`; every change emits a new, immutable tree. The button at the top switches
  * between the compact rail and a wide drawer; bind `[(expanded)]` to control or remember that state.
@@ -130,11 +131,12 @@ export class DndNavigator {
   /** Marks this navigator's menu panels, which render in an overlay outside the host. */
   protected readonly navId = `dnd-nav-${nextId++}`;
   protected readonly menuIcon = 'apps';
+  /** Id of the menu whose panel is open, if any. */
+  protected readonly openMenuId = signal<string | null>(null);
 
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly document = inject(DOCUMENT);
   private readonly announcer = inject(LiveAnnouncer);
-  private readonly injector = inject(Injector);
   private readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
   private readonly menuTriggers = viewChildren('menuTrigger', { read: MatMenuTrigger });
   private readonly menuTriggerElements = viewChildren('menuTrigger', { read: ElementRef });
@@ -231,25 +233,21 @@ export class DndNavigator {
     this.editingGroupId.set(null);
   }
 
-  /**
-   * Shifts an open menu's panel beside its trigger, like a flyout, so the rail stays visible as a
-   * drop target while dragging items out of the menu. MatMenu has no input for this placement.
-   */
-  protected placeBesideTrigger(menuId: string, menu: MatMenu): void {
-    const index = this.menuTriggerElements().findIndex(
-      (element) => element.nativeElement.dataset['id'] === menuId,
-    );
-    const trigger: HTMLElement | undefined = this.menuTriggerElements()[index]?.nativeElement;
-    // The panel's id is bound on the next render.
-    afterNextRender(
-      () => {
-        const panel = this.document.getElementById(menu.panelId);
-        if (trigger && panel) {
-          panel.style.marginInlineStart = `${trigger.offsetWidth + 8}px`;
-        }
-      },
-      { injector: this.injector },
-    );
+  protected toggleMenu(menuId: string): void {
+    this.menuTrigger(menuId)?.toggleMenu();
+  }
+
+  protected onMenuClosed(menuId: string): void {
+    if (this.openMenuId() === menuId) {
+      this.openMenuId.set(null);
+    }
+    // Focus would otherwise be lost with the panel; the anchor that owns the menu can't take it.
+    const active = this.document.activeElement;
+    if (!active || active === this.document.body || active.closest('.mat-mdc-menu-panel')) {
+      this.host.nativeElement
+        .querySelector<HTMLElement>(`[data-drop="menu-trigger"][data-id="${menuId}"]`)
+        ?.focus();
+    }
   }
 
   // ---- Drag and drop -----------------------------------------------------
@@ -317,6 +315,18 @@ export class DndNavigator {
     if (this.clickSuppressed()) {
       event.stopPropagation();
       event.preventDefault();
+      return;
+    }
+    // Menus have no backdrop, so the rail stays usable (and draggable) while one is open; close
+    // the open menu on a click anywhere but its panel and its own trigger, which toggles it.
+    const openId = this.openMenuId();
+    const target = event.target as Element | null;
+    if (
+      openId &&
+      !target?.closest('.mat-mdc-menu-panel') &&
+      target?.closest<HTMLElement>('[data-drop="menu-trigger"]')?.dataset['id'] !== openId
+    ) {
+      this.closeMenus();
     }
   };
 
@@ -354,13 +364,17 @@ export class DndNavigator {
 
   private drop(node: NavNode, target: DropTarget | null): void {
     const before = this.items();
-    const after = target
-      ? moveNode(before, node.id, target, {
+    // With the flag off, menus are shown flattened into their group. Dropping next to one of those
+    // items should land exactly there, in the group, so that menu is flattened for real first.
+    const base = this.flattenHiddenMenu(before, target);
+    const moved = target
+      ? moveNode(base, node.id, target, {
           groupFactory: this.groupFactory(),
           menuFactory: this.menuFactory(),
           allowMenus: this.experimental(),
         })
-      : before;
+      : base;
+    const after = moved === base ? before : moved;
 
     // Keep whatever now contains the dropped node open; close everything opened along the way.
     const containers = after !== before ? ancestorIds(after, node.id) : [];
@@ -392,6 +406,18 @@ export class DndNavigator {
       this.items.set(after);
       this.announcer.announce(this.describeDrop(node, target!, after));
     }
+  }
+
+  private flattenHiddenMenu(
+    nodes: readonly NavNode[],
+    target: DropTarget | null,
+  ): readonly NavNode[] {
+    if (this.experimental() || (target?.kind !== 'before' && target?.kind !== 'after')) {
+      return nodes;
+    }
+    const parentId = findNode(nodes, target.refId)?.parentId;
+    const parent = parentId ? findNode(nodes, parentId)?.node : undefined;
+    return parent?.kind === 'menu' ? flattenMenu(nodes, parent.id) : nodes;
   }
 
   private endDrag(): void {
@@ -473,15 +499,7 @@ export class DndNavigator {
 
   /** Maps a pointer position to a drop target, based on the element under the pointer. */
   private resolveTarget(dragged: NavNode, x: number, y: number): DropTarget | null {
-    // An open menu's backdrop covers the page, and its overlay pane extends over the rail (see
-    // `placeBesideTrigger`), so look underneath both. The menu panel itself is still hit.
-    const element = this.document
-      .elementsFromPoint(x, y)
-      .find(
-        (el) =>
-          !el.classList.contains('cdk-overlay-backdrop') &&
-          !el.classList.contains('cdk-overlay-pane'),
-      );
+    const element = this.document.elementFromPoint(x, y);
     const zone = element?.closest<HTMLElement>('[data-drop]');
     const inMenuPanel = zone?.closest<HTMLElement>('[data-nav]')?.dataset['nav'] === this.navId;
     if (!zone || !(inMenuPanel || this.host.nativeElement.contains(zone))) {

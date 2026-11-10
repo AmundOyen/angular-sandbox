@@ -11,4 +11,12 @@ export type {
   NavMenu,
   NavNode,
 } from './nav-tree';
-export { canDrop, createGroup, createMenu, moveNode, normalize, renameGroup } from './nav-tree';
+export {
+  canDrop,
+  createGroup,
+  createMenu,
+  flattenMenu,
+  moveNode,
+  normalize,
+  renameGroup,
+} from './nav-tree';

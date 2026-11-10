@@ -1,6 +1,7 @@
 import {
   ancestorIds,
   canDrop,
+  flattenMenu,
   GroupFactory,
   MenuFactory,
   moveNode,
@@ -244,6 +245,12 @@ describe('nav-tree', () => {
       const renamed = renameGroup(tree, 'm', 'Tools');
       expect(findMenuLabel(renamed)).toBe('Tools');
       expect(findMenuLabel(tree)).toBe('m');
+    });
+
+    it('flattens a menu into its group, in place', () => {
+      const tree = [deepGroup('g', 'x', menu('m', 'p', 'q'), 'y'), item('a')];
+      expect(shape(flattenMenu(tree, 'm'))).toEqual(['g[x,p,q,y]', 'a']);
+      expect(shape(tree)).toEqual(['g[x,m[p,q],y]', 'a']);
     });
 
     it('normalize flattens menus at the root, which only invalid data can produce', () => {
