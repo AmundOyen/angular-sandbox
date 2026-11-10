@@ -215,6 +215,20 @@ function renameIn<T extends NavNode>(node: T, id: string, label: string): T {
   return node;
 }
 
+/** Returns a copy of `nodes` with the menu `menuId` replaced by its items, in place. */
+export function flattenMenu(nodes: readonly NavNode[], menuId: string): readonly NavNode[] {
+  return nodes.map((node) =>
+    node.kind === 'group' && node.children.some((child) => child.id === menuId)
+      ? {
+          ...node,
+          children: node.children.flatMap((child) =>
+            child.id === menuId && child.kind === 'menu' ? [...child.children] : [child],
+          ),
+        }
+      : node,
+  );
+}
+
 /**
  * Cleans up the tree after a change:
  * - menus with a single item are replaced by that item, and empty menus are removed;

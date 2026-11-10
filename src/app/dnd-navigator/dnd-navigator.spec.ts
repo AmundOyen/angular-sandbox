@@ -175,5 +175,35 @@ describe('DndNavigator', () => {
       entry.click();
       expect(fixture.componentInstance.selected()?.id).toBe('music');
     });
+
+    it('keeps the rail usable while a menu is open and closes it on an outside click', async () => {
+      fixture.componentInstance.experimental.set(true);
+      await fixture.whenStable();
+      const trigger = query('[data-drop="menu-trigger"]');
+
+      trigger.click();
+      await fixture.whenStable();
+      expect(trigger.getAttribute('aria-expanded')).toBe('true');
+      expect(document.querySelector('.cdk-overlay-backdrop')).toBeNull();
+
+      query('[data-id="photos"]').click();
+      await fixture.whenStable();
+      expect(fixture.componentInstance.selected()?.id).toBe('photos');
+      expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('toggles the menu with its trigger', async () => {
+      fixture.componentInstance.experimental.set(true);
+      await fixture.whenStable();
+      const trigger = query('[data-drop="menu-trigger"]');
+
+      trigger.click();
+      await fixture.whenStable();
+      expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+      trigger.click();
+      await fixture.whenStable();
+      expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    });
   });
 });

@@ -90,7 +90,21 @@
                   </li>
                 }
               } @else {
-                <li class="nav-slot">
+                <li class="nav-slot menu-slot">
+                  <!--
+                    The menu opens from this anchor at the slot's trailing edge, as a flyout beside
+                    the rail, so the rail stays visible as a drop target.
+                  -->
+                  <span
+                    #menuTrigger
+                    class="menu-anchor"
+                    aria-hidden="true"
+                    [attr.data-id]="child.id"
+                    [matMenuTriggerFor]="menuPanel"
+                    [matMenuTriggerRestoreFocus]="false"
+                    (menuOpened)="openMenuId.set(child.id)"
+                    (menuClosed)="onMenuClosed(child.id)"
+                  ></span>
                   @if (editingGroupId() === child.id) {
                     <div class="tile editing">
                       <mat-icon class="tile-icon">{{ menuIcon }}</mat-icon>
@@ -106,14 +120,15 @@
                     </div>
                   } @else {
                     <button
-                      #menuTrigger
                       type="button"
                       class="tile menu-trigger"
                       data-drop="menu-trigger"
+                      aria-haspopup="menu"
                       [attr.data-id]="child.id"
                       [attr.data-parent]="node.id"
-                      [matMenuTriggerFor]="menuPanel"
-                      (menuOpened)="placeBesideTrigger(child.id, menuPanel)"
+                      [attr.aria-expanded]="openMenuId() === child.id"
+                      [attr.aria-controls]="openMenuId() === child.id ? menuPanel.panelId : null"
+                      (click)="toggleMenu(child.id)"
                       [class.active]="containsActive(child)"
                       [class.dragging]="draggedId() === child.id"
                       [class]="dropClass(child.id)"
@@ -130,7 +145,12 @@
                       <mat-icon class="chevron" aria-hidden="true">arrow_right</mat-icon>
                     </button>
                   }
-                  <mat-menu #menuPanel="matMenu" xPosition="after" overlapTrigger>
+                  <mat-menu
+                    #menuPanel="matMenu"
+                    xPosition="after"
+                    overlapTrigger
+                    [hasBackdrop]="false"
+                  >
                     <ng-template matMenuContent>
                       <div
                         class="menu-items"
