@@ -1,0 +1,91 @@
+@if (showSearch()) {
+  <mat-form-field class="search" appearance="outline" subscriptSizing="dynamic">
+    <mat-icon matPrefix>search</mat-icon>
+    <mat-label>Search icons</mat-label>
+    <input
+      matInput
+      type="search"
+      autocomplete="off"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-expanded="true"
+      [attr.aria-controls]="listboxId"
+      [attr.aria-activedescendant]="activeOptionId()"
+      [disabled]="isDisabled()"
+      [value]="query()"
+      (input)="query.set($any($event.target).value)"
+      (keydown)="onSearchKeydown($event)"
+    />
+  </mat-form-field>
+}
+
+@if (showCategories()) {
+  <mat-chip-listbox
+    class="categories"
+    aria-label="Filter by category"
+    multiple
+    [disabled]="isDisabled()"
+    [value]="categories()"
+    (change)="onCategoriesChange($event.value)"
+  >
+    @for (category of allCategories; track category) {
+      <mat-chip-option [value]="category">{{ category }}</mat-chip-option>
+    }
+  </mat-chip-listbox>
+}
+
+<p class="count" aria-live="polite">
+  {{ filtered().length }} {{ filtered().length === 1 ? 'icon' : 'icons' }}
+  @if (selected().length) {
+    · {{ selected().length }} selected
+  }
+</p>
+
+<cdk-virtual-scroll-viewport
+  class="viewport"
+  role="listbox"
+  [itemSize]="rowHeight"
+  minBufferPx="208"
+  maxBufferPx="416"
+  [id]="listboxId"
+  [attr.aria-label]="ariaLabel()"
+  [attr.aria-multiselectable]="multiple()"
+  [attr.aria-disabled]="isDisabled() || null"
+  [attr.aria-activedescendant]="focusable() ? activeOptionId() : null"
+  [attr.tabindex]="focusable() && !isDisabled() ? 0 : null"
+  (focus)="onGridFocus()"
+  (keydown)="focusable() && handleKeydown($event)"
+>
+  <div
+    *cdkVirtualFor="let row of rows(); trackBy: trackRow"
+    class="row"
+    role="none"
+    [style.grid-template-columns]="'repeat(' + columns() + ', minmax(0, 1fr))'"
+  >
+    @for (icon of row.icons; track icon.name; let i = $index) {
+      @let index = row.index + i;
+      <div
+        class="tile"
+        role="option"
+        [id]="optionId(icon)"
+        [title]="icon.name"
+        [attr.aria-selected]="isSelected(icon)"
+        [attr.aria-setsize]="filtered().length"
+        [attr.aria-posinset]="index + 1"
+        [class.active]="index === activeIndex()"
+        [class.selected]="isSelected(icon)"
+        (click)="onClick(icon, index)"
+      >
+        <mat-icon aria-hidden="true">{{ icon.name }}</mat-icon>
+        <span class="label">{{ icon.displayName }}</span>
+        @if (isSelected(icon)) {
+          <mat-icon class="check" aria-hidden="true">check_circle</mat-icon>
+        }
+      </div>
+    }
+  </div>
+</cdk-virtual-scroll-viewport>
+
+@if (filtered().length === 0) {
+  <p class="empty">No icons match “{{ query() }}”.</p>
+}

@@ -1,0 +1,50 @@
+<h1>Material icons</h1>
+<p class="hint">
+  All Material Symbols with their category and search aliases. Filter by category, search by name or
+  alias (try “trash”, “house” or “chevron”) and select icons.
+</p>
+
+<section aria-labelledby="list-heading">
+  <div class="section-header">
+    <h2 id="list-heading">Standalone list</h2>
+    <mat-slide-toggle [checked]="listMultiple()" (change)="setListMultiple($event.checked)">
+      Multiple
+    </mat-slide-toggle>
+  </div>
+
+  <material-icon-list class="list" [multiple]="listMultiple()" [(selected)]="listSelected" />
+
+  <p class="selection">
+    Selected:
+    @for (name of listSelected(); track name) {
+      <span class="selected-name"
+        ><mat-icon aria-hidden="true">{{ name }}</mat-icon
+        >{{ name }}</span
+      >
+    } @empty {
+      <span class="none">nothing yet</span>
+    }
+  </p>
+</section>
+
+<section aria-labelledby="input-heading">
+  <div class="section-header">
+    <h2 id="input-heading">Input field with overlay</h2>
+    <mat-slide-toggle [checked]="inputMultiple()" (change)="setInputMultiple($event.checked)">
+      Multiple
+    </mat-slide-toggle>
+  </div>
+
+  <mat-form-field class="field" appearance="outline">
+    <mat-label>{{ inputMultiple() ? 'Icons' : 'Icon' }}</mat-label>
+    <material-icon-input [formControl]="control" [multiple]="inputMultiple()" required />
+    <mat-hint>Type to search, use the arrow keys and press Enter to select</mat-hint>
+    @if (control.hasError('required')) {
+      <mat-error>Choose {{ inputMultiple() ? 'at least one icon' : 'an icon' }}</mat-error>
+    }
+  </mat-form-field>
+
+  <p class="selection">
+    Form value: <code>{{ control.value | json }}</code>
+  </p>
+</section>

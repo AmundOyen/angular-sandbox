@@ -1,0 +1,65 @@
+<div class="field">
+  @if (multiple()) {
+    @for (icon of selectedIcons(); track icon.name) {
+      <mat-chip class="chip" [disabled]="disabled()" (removed)="remove(icon.name)">
+        <mat-icon matChipAvatar aria-hidden="true">{{ icon.name }}</mat-icon>
+        {{ icon.displayName }}
+        <button matChipRemove [attr.aria-label]="'Remove ' + icon.displayName">
+          <mat-icon>cancel</mat-icon>
+        </button>
+      </mat-chip>
+    }
+  } @else if (selectedIcons()[0]; as icon) {
+    @if (!panelOpen()) {
+      <mat-icon class="selected-icon" aria-hidden="true">{{ icon.name }}</mat-icon>
+    }
+  }
+
+  <input
+    #input
+    class="input"
+    type="text"
+    autocomplete="off"
+    role="combobox"
+    aria-autocomplete="list"
+    aria-haspopup="listbox"
+    [id]="id"
+    [attr.aria-describedby]="describedBy()"
+    [attr.aria-expanded]="panelOpen()"
+    [attr.aria-controls]="panelOpen() ? list()?.listboxId : null"
+    [attr.aria-activedescendant]="panelOpen() ? list()?.activeOptionId() : null"
+    [attr.aria-required]="required()"
+    [attr.aria-invalid]="errorState()"
+    [placeholder]="shouldLabelFloat() ? placeholder() : ''"
+    [disabled]="disabled()"
+    [value]="inputText()"
+    (input)="onInput($any($event.target).value)"
+    (keydown)="onKeydown($event)"
+    (click)="open()"
+  />
+
+  @if (!multiple() && selected().length && !disabled()) {
+    <button mat-icon-button class="clear" type="button" aria-label="Clear icon" (click)="clear()">
+      <mat-icon>close</mat-icon>
+    </button>
+  }
+</div>
+
+<ng-template #panel>
+  <!-- Mouse down would move focus out of the field; keep it there, as in an autocomplete. -->
+  <div class="material-icon-input-panel" [id]="panelId" (mousedown)="$event.preventDefault()">
+    <material-icon-list
+      class="material-icon-list-compact"
+      aria-label="Icons"
+      [icons]="icons()"
+      [multiple]="multiple()"
+      [query]="query()"
+      [(categories)]="categories"
+      [selected]="selected()"
+      (selectedChange)="onListSelectedChange($event)"
+      (iconSelect)="onIconSelect()"
+      [showSearch]="false"
+      [focusable]="false"
+    />
+  </div>
+</ng-template>

@@ -6,12 +6,13 @@ A sandbox for trying out Angular 22 and Angular Material (Material 3), deployed 
 
 ## Pages
 
-| Route         | What it shows                                                                                                                                                                                                                                                                                |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`           | Home.                                                                                                                                                                                                                                                                                        |
-| `/accordion`  | A `mat-accordion` with three panels of mock data. Drag a panel by its handle to reorder it; the order is saved in `localStorage`.                                                                                                                                                            |
-| `/image-mask` | Upload an image and drag a rectangle to mark the visible area. Preview it as a **crop** (the area scaled to fill its container) or **clip in place** (`clip-path: inset(...)`), with aspect-ratio presets and copyable CSS. The image is kept in memory for the session only.                |
-| `/navigator`  | A drag-and-drop navigation rail (migrated from [dnd-nav](https://github.com/AmundOyen/dnd-nav)). Reorder items, drop one item on another to group them, drag between groups, rename groups with double-click or F2, and toggle between rail and drawer. The tree is saved in `localStorage`. |
+| Route             | What it shows                                                                                                                                                                                                                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`               | Home.                                                                                                                                                                                                                                                                                        |
+| `/accordion`      | A `mat-accordion` with three panels of mock data. Drag a panel by its handle to reorder it; the order is saved in `localStorage`.                                                                                                                                                            |
+| `/image-mask`     | Upload an image and drag a rectangle to mark the visible area. Preview it as a **crop** (the area scaled to fill its container) or **clip in place** (`clip-path: inset(...)`), with aspect-ratio presets and copyable CSS. The image is kept in memory for the session only.                |
+| `/material-icons` | All Material Symbols as a searchable grid, filterable by category. Shows the picker both standalone and as an overlay below a form field, each with a single/multiple switch.                                                                                                                |
+| `/navigator`      | A drag-and-drop navigation rail (migrated from [dnd-nav](https://github.com/AmundOyen/dnd-nav)). Reorder items, drop one item on another to group them, drag between groups, rename groups with double-click or F2, and toggle between rail and drawer. The tree is saved in `localStorage`. |
 
 Feature pages are lazy-loaded from `src/app/pages/`.
 
@@ -41,6 +42,49 @@ The reusable component lives in `src/app/dnd-navigator/` and is exported from it
 
 Colours come from the Material 3 system tokens (`--mat-sys-*`). The widths can be changed with `--dnd-nav-width` (rail, default `88px`) and `--dnd-nav-drawer-width` (drawer, default `240px`). The tree operations (`moveNode`, `canDrop`, `normalize`, `renameGroup`) are pure functions in `nav-tree.ts`.
 
+### Material icon picker
+
+`src/app/material-icon-picker/` (exported from its `index.ts`) has an index of the Material Symbols and two components to pick from it.
+
+`MATERIAL_ICONS` lists about 4,000 icons, each with a `name` (the ligature, e.g. `arrow_back`), `displayName` (`Arrow Back`), `category` (one of the 17 Google Fonts categories) and search `aliases` (`previous`, `return`, …). `filterIcons(icons, { query, categories })` searches display names and aliases and ranks the best matches first.
+
+The index is generated by `npm run generate:icons` (`scripts/generate-material-icons.mjs`):
+
+- **Names** come from `@material-symbols/metadata`.
+- **Categories** come from `@iconify-json/material-symbols`.
+- **Aliases** come from `scripts/material-icon-aliases.mjs`: synonyms for the words in icon names, plus hand-written aliases for common icons. Older ligature names that draw the same glyph (e.g. `push_pin` for `keep`) are added as aliases too.
+
+To change the aliases, edit that file and run the script again.
+
+```html
+<!-- Standalone grid with search and category chips -->
+<material-icon-list [multiple]="true" [(selected)]="names" />
+
+<!-- Form field control; the grid opens in an overlay below the field -->
+<mat-form-field>
+  <mat-label>Icon</mat-label>
+  <material-icon-input [formControl]="icon" />
+</mat-form-field>
+```
+
+| API                       | Type                                     | Description                                                                      |
+| ------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
+| `multiple`                | `input<boolean>`                         | Allows more than one icon. Default `false`.                                      |
+| `icons`                   | `input<readonly MaterialIcon[]>`         | Icons to choose from. Default `MATERIAL_ICONS`.                                  |
+| `categories`              | `model<readonly MaterialIconCategory[]>` | Category filter. Empty shows all.                                                |
+| `selected` (list only)    | `model<readonly string[]>`               | Selected names.                                                                  |
+| `query` (list only)       | `model<string>`                          | Search text.                                                                     |
+| `iconSelect` (list only)  | `output<MaterialIcon>`                   | Emitted when the user selects or deselects an icon.                              |
+| `formControl` / `ngModel` | `string \| string[] \| null`             | Both components are form controls: a name, or an array of names with `multiple`. |
+
+The grid uses CDK virtual scroll, so only the rows near the visible area are rendered. Set its height with `--material-icon-list-height`.
+
+Keyboard support:
+
+- **Grid and search field:** the arrow keys move, Home/End jump to the first or last icon, and Enter selects.
+- **Input:** typing or ArrowDown opens the overlay. Escape closes it, and Backspace in an empty field removes the last chip.
+- **Single mode:** picking an icon closes the overlay. With `multiple`, it stays open.
+
 ## Tech stack
 
 - Angular 22: standalone components, signals, zoneless change detection
@@ -69,6 +113,7 @@ Then open http://localhost:4200/.
 | `npm test`                 | Unit tests in watch mode. Add `-- --watch=false` for a single run. |
 | `npm run build`            | Production build to `dist/angular-sandbox/browser`.                |
 | `npm run build:pages`      | Production build with the `/angular-sandbox/` base href for Pages. |
+| `npm run generate:icons`   | Regenerate the Material icon index from the icon packages.         |
 | `npx prettier --check src` | Check formatting.                                                  |
 
 ## Deployment

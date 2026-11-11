@@ -1,0 +1,54 @@
+:host {
+  display: block;
+}
+
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 24px;
+}
+
+.input {
+  flex: 1 1 120px;
+  min-width: 80px;
+  border: none;
+  outline: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  caret-color: var(--mat-sys-primary);
+
+  &::placeholder {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &:disabled {
+    color: color-mix(in srgb, var(--mat-sys-on-surface) 38%, transparent);
+  }
+}
+
+.selected-icon {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.clear {
+  // Keep the field's height: the icon button is larger than a line of text.
+  margin: -12px -8px -12px 0;
+}
+
+:host(.material-icon-input-multiple) .field {
+  padding: 4px 0;
+}
+
+.material-icon-input-panel {
+  --material-icon-list-height: min(360px, 50vh);
+  padding: 12px;
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface-container);
+  box-shadow: var(--mat-sys-level2);
+  max-height: 80vh;
+  overflow: auto;
+}
