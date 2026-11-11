@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ImageMaskStore } from './image-mask-store';
-import { clipPath, cropStyles, maskCss, MaskMode, RATIO_PRESETS } from './mask';
+import { clipPath, cropStyles, maskCss, MaskMode, RATIO_PRESETS, SHAPE_OPTIONS } from './mask';
 import { RectSelector } from './rect-selector/rect-selector';
 
 @Component({
@@ -27,9 +27,10 @@ export class ImageMask {
   private readonly snackBar = inject(MatSnackBar);
 
   protected readonly ratioPresets = RATIO_PRESETS;
+  protected readonly shapeOptions = SHAPE_OPTIONS;
   protected readonly dragOver = signal(false);
 
-  protected readonly clipPath = computed(() => clipPath(this.store.rect()));
+  protected readonly clipPath = computed(() => clipPath(this.store.rect(), this.store.shape()));
 
   protected readonly crop = computed(() => {
     const image = this.store.image();
@@ -38,7 +39,9 @@ export class ImageMask {
 
   protected readonly css = computed(() => {
     const image = this.store.image();
-    return image ? maskCss(this.store.mode(), this.store.rect(), image.width, image.height) : '';
+    return image
+      ? maskCss(this.store.mode(), this.store.rect(), image.width, image.height, this.store.shape())
+      : '';
   });
 
   /** The selection in image pixels, for the readout under the editor. */

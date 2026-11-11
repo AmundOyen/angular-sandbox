@@ -13,6 +13,21 @@ export interface Point {
 
 export type MaskMode = 'crop' | 'clip';
 
+/** The outline of the visible area. An oval and a circle fill the selected rectangle. */
+export type MaskShape = 'rect' | 'oval' | 'circle';
+
+export interface ShapeOption {
+  id: MaskShape;
+  label: string;
+  icon: string;
+}
+
+export const SHAPE_OPTIONS: ShapeOption[] = [
+  { id: 'rect', label: 'Rectangle', icon: 'crop_square' },
+  { id: 'oval', label: 'Oval', icon: 'egg' },
+  { id: 'circle', label: 'Circle', icon: 'circle' },
+];
+
 /** Smallest width or height a rectangle can have, in percent. */
 export const MIN_SIZE = 1;
 
@@ -153,8 +168,18 @@ export function fitToRatio(rect: MaskRect, ratio: number | null): MaskRect {
   };
 }
 
-/** `clip-path` value that hides everything outside the rectangle, leaving the image in place. */
-export function clipPath(rect: MaskRect): string {
+/**
+ * `clip-path` value that hides everything outside the area, leaving the image in place.
+ * A circle is drawn as an ellipse because its radii are a pixel square, not a percent square.
+ */
+export function clipPath(rect: MaskRect, shape: MaskShape = 'rect'): string {
+  if (shape !== 'rect') {
+    const rx = fmt(rect.width / 2);
+    const ry = fmt(rect.height / 2);
+    const cx = fmt(rect.x + rect.width / 2);
+    const cy = fmt(rect.y + rect.height / 2);
+    return `ellipse(${rx}% ${ry}% at ${cx}% ${cy}%)`;
+  }
   const top = fmt(rect.y);
   const right = fmt(100 - rect.x - rect.width);
   const bottom = fmt(100 - rect.y - rect.height);
@@ -190,9 +215,10 @@ export function maskCss(
   rect: MaskRect,
   imageWidth: number,
   imageHeight: number,
+  shape: MaskShape = 'rect',
 ): string {
   if (mode === 'clip') {
-    return `.masked-image {\n  clip-path: ${clipPath(rect)};\n}\n`;
+    return `.masked-image {\n  clip-path: ${clipPath(rect, shape)};\n}\n`;
   }
   const crop = cropStyles(rect, imageWidth, imageHeight);
   return [
@@ -200,6 +226,7 @@ export function maskCss(
     '  position: relative;',
     '  overflow: hidden;',
     `  aspect-ratio: ${crop.aspectRatio};`,
+    ...(shape === 'rect' ? [] : ['  border-radius: 50%;']),
     '}',
     '',
     '.masked-image img {',

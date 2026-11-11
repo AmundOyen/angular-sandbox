@@ -8,10 +8,11 @@
 >
   <img [src]="src()" [alt]="alt()" draggable="false" />
   <div class="shade" aria-hidden="true">
-    <div class="shade-hole" [style]="box()"></div>
+    <div class="shade-hole" [class.round]="round()" [style]="box()"></div>
   </div>
   <div
     class="selection"
+    [class.round]="round()"
     tabindex="0"
     role="group"
     aria-label="Visible area. Arrow keys move it, Shift and arrow keys resize it."

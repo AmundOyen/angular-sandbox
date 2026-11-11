@@ -31,6 +31,10 @@ img {
 .shade-hole {
   position: absolute;
   box-shadow: 0 0 0 100vmax rgb(0 0 0 / 55%);
+
+  &.round {
+    border-radius: 50%;
+  }
 }
 
 .selection {
@@ -43,6 +47,21 @@ img {
   &:focus-visible {
     outline: 3px solid var(--mat-sys-primary);
     outline-offset: 2px;
+  }
+
+  // The ellipse gets the solid border; a dashed bounding box keeps the handles readable.
+  &.round {
+    border-style: dashed;
+    border-color: rgb(255 255 255 / 70%);
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      pointer-events: none;
+    }
   }
 }
 

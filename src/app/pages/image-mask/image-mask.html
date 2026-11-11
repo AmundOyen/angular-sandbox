@@ -40,25 +40,41 @@
     <section class="editor" aria-labelledby="editor-heading">
       <h2 id="editor-heading">Visible area</h2>
       <p class="hint">
-        Drag outside the rectangle to draw a new one, drag inside it to move it, or drag a handle to
+        Drag outside the area to draw a new one, drag inside it to move it, or drag a handle to
         resize it.
       </p>
 
-      <mat-button-toggle-group
-        class="ratio"
-        aria-label="Aspect ratio"
-        [value]="store.ratio().id"
-        (change)="store.setRatio($event.value)"
-      >
-        @for (preset of ratioPresets; track preset.id) {
-          <mat-button-toggle [value]="preset.id">{{ preset.label }}</mat-button-toggle>
-        }
-      </mat-button-toggle-group>
+      <div class="toolbar">
+        <mat-button-toggle-group
+          aria-label="Shape"
+          [value]="store.shape()"
+          (change)="store.setShape($event.value)"
+        >
+          @for (shape of shapeOptions; track shape.id) {
+            <mat-button-toggle [value]="shape.id">
+              <mat-icon>{{ shape.icon }}</mat-icon>
+              {{ shape.label }}
+            </mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+
+        <mat-button-toggle-group
+          aria-label="Aspect ratio"
+          [value]="store.ratioLocked() ? '1:1' : store.ratio().id"
+          [disabled]="store.ratioLocked()"
+          (change)="store.setRatio($event.value)"
+        >
+          @for (preset of ratioPresets; track preset.id) {
+            <mat-button-toggle [value]="preset.id">{{ preset.label }}</mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+      </div>
 
       <app-rect-selector
         [src]="image.url"
         [alt]="image.name"
         [ratio]="store.percentRatio()"
+        [round]="store.shape() !== 'rect'"
         [(rect)]="store.rect"
       />
 
@@ -84,7 +100,11 @@
       <div class="preview-frame">
         @if (store.mode() === 'crop') {
           @if (crop(); as crop) {
-            <div class="masked-crop" [style.aspect-ratio]="crop.aspectRatio">
+            <div
+              class="masked-crop"
+              [class.round]="store.shape() !== 'rect'"
+              [style.aspect-ratio]="crop.aspectRatio"
+            >
               <img
                 [src]="image.url"
                 [alt]="image.name"

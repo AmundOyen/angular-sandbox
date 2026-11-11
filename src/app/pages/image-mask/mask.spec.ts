@@ -123,6 +123,19 @@ describe('mask', () => {
       const crop = maskCss('crop', rect, 800, 400);
       expect(crop).toContain('aspect-ratio: 400 / 100;');
       expect(crop).toContain('width: 200%;');
+      expect(crop).not.toContain('border-radius');
+    });
+
+    it('builds an ellipse clip-path for round shapes', () => {
+      expect(clipPath(rect, 'oval')).toBe('ellipse(25% 12.5% at 35% 32.5%)');
+      expect(clipPath(rect, 'circle')).toBe('ellipse(25% 12.5% at 35% 32.5%)');
+    });
+
+    it('generates round CSS for both modes', () => {
+      expect(maskCss('clip', rect, 800, 400, 'oval')).toContain(
+        'clip-path: ellipse(25% 12.5% at 35% 32.5%);',
+      );
+      expect(maskCss('crop', rect, 800, 400, 'circle')).toContain('border-radius: 50%;');
     });
   });
 });
