@@ -20,6 +20,13 @@ export const routes: Routes = [
     data: { navIcon: 'crop' },
   },
   {
+    path: 'material-icons',
+    loadComponent: () =>
+      import('./pages/material-icons/material-icons').then((m) => m.MaterialIcons),
+    title: 'Material icons',
+    data: { navIcon: 'interests' },
+  },
+  {
     path: 'navigator',
     loadComponent: () => import('./pages/navigator/navigator').then((m) => m.Navigator),
     title: 'Navigator',

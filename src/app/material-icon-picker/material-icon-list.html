@@ -1,0 +1,97 @@
+@if (showSearch()) {
+  <mat-form-field class="search" appearance="outline" subscriptSizing="dynamic">
+    <mat-icon matPrefix>search</mat-icon>
+    <mat-label>Search icons</mat-label>
+    <input
+      matInput
+      type="search"
+      autocomplete="off"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-expanded="true"
+      [attr.aria-controls]="listboxId"
+      [attr.aria-activedescendant]="activeOptionId()"
+      [disabled]="isDisabled()"
+      [value]="query()"
+      (input)="query.set($any($event.target).value)"
+      (keydown)="onSearchKeydown($event)"
+    />
+  </mat-form-field>
+}
+
+@if (showCategories()) {
+  <mat-chip-listbox
+    class="categories"
+    aria-label="Filter by category"
+    multiple
+    [disabled]="isDisabled()"
+    [value]="categories()"
+    (change)="onCategoriesChange($event.value)"
+  >
+    @for (category of allCategories; track category) {
+      <mat-chip-option [value]="category">{{ category }}</mat-chip-option>
+    }
+  </mat-chip-listbox>
+}
+
+<p class="count" aria-live="polite">
+  {{ filtered().length }} {{ filtered().length === 1 ? 'icon' : 'icons' }}
+  @if (selected().length) {
+    · {{ selected().length }} selected
+  }
+</p>
+
+<div
+  #viewport
+  class="viewport"
+  role="listbox"
+  [id]="listboxId"
+  [attr.aria-label]="ariaLabel()"
+  [attr.aria-multiselectable]="multiple()"
+  [attr.aria-disabled]="isDisabled() || null"
+  [attr.aria-activedescendant]="focusable() ? activeOptionId() : null"
+  [attr.tabindex]="focusable() && !isDisabled() ? 0 : null"
+  (focus)="onGridFocus()"
+  (keydown)="focusable() && handleKeydown($event)"
+  (scroll)="onScroll()"
+>
+  <!-- Full height of the grid, so the scrollbar is right; only nearby rows are rendered. -->
+  <div class="spacer" role="none" [style.height.px]="rows().length * rowHeight">
+    @let visible = visibleRows();
+    <div class="window" role="none" [style.transform]="'translateY(' + visible.offset + 'px)'">
+      @for (row of visible.rows; track row.index) {
+        <div
+          class="row"
+          role="none"
+          [style.grid-template-columns]="'repeat(' + columns() + ', minmax(0, 1fr))'"
+        >
+          @for (icon of row.icons; track icon.name; let i = $index) {
+            @let index = row.index + i;
+            <div
+              class="tile"
+              role="option"
+              [id]="optionId(icon)"
+              [title]="icon.name"
+              [attr.aria-selected]="isSelected(icon)"
+              [attr.aria-setsize]="filtered().length"
+              [attr.aria-posinset]="index + 1"
+              [class.active]="index === activeIndex()"
+              [class.selected]="isSelected(icon)"
+              (click)="onClick(icon, index)"
+            >
+              <mat-icon aria-hidden="true">{{ icon.name }}</mat-icon>
+              <span class="label">{{ icon.displayName }}</span>
+              @if (isSelected(icon)) {
+                <mat-icon class="check" aria-hidden="true">check_circle</mat-icon>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+@if (filtered().length === 0) {
+  <p class="empty">No icons match “{{ query() }}”.</p>
+}
