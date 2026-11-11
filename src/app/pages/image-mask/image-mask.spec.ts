@@ -125,6 +125,11 @@ describe('ImageMask', () => {
     store.setOrientation('landscape');
     await fixture.whenStable();
     expect(element.querySelector('.readout')?.textContent).toContain('320 × 240 px');
+
+    // 3:2 for a classic photo look fits inside the current area.
+    store.setRatio('3:2');
+    await fixture.whenStable();
+    expect(element.querySelector('.readout')?.textContent).toContain('320 × 213 px');
   });
 
   it('rejects files that are not images', async () => {
