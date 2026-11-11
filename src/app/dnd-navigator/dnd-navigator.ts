@@ -3,6 +3,8 @@ import {
   DestroyRef,
   DOCUMENT,
   ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -15,6 +17,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { Directionality } from '@angular/cdk/bidi';
 import { MatIconButton } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
@@ -23,6 +26,7 @@ import {
   DropTarget,
   GroupFactory,
   MenuFactory,
+  MoveDirection,
   NavGroup,
   NavItem,
   NavMenu,
@@ -32,6 +36,7 @@ import {
   createGroup,
   createMenu,
   findNode,
+  keyboardTarget,
   moveNode,
   renameGroup,
 } from './nav-tree';
@@ -81,6 +86,12 @@ interface ActiveDrag {
  * - Menus left with a single item are replaced by that item.
  * - While a menu is open the rail stays usable; a click outside the menu closes it.
  *
+ * Everything can also be done with the keyboard, on the focused item, group or menu:
+ * - Alt+ArrowUp/ArrowDown moves it past its neighbour, or out of its group or menu at either end.
+ * - Alt+ArrowRight moves it into the group or menu above it, or combines it with the item above.
+ * - Alt+ArrowLeft moves it out of its group or menu.
+ * Focus stays on the moved node, and each move is announced to screen readers.
+ *
  * Bind with `[(items)]`; every change emits a new, immutable tree. The button at the top switches
  * between the compact rail and a wide drawer; bind `[(expanded)]` to control or remember that state.
  */
@@ -124,6 +135,8 @@ export class DndNavigator {
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly document = inject(DOCUMENT);
   private readonly announcer = inject(LiveAnnouncer);
+  private readonly injector = inject(Injector);
+  private readonly dir = inject(Directionality, { optional: true });
   private readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
   private readonly menuTriggers = viewChildren('menuTrigger', { read: MatMenuTrigger });
   private readonly menuTriggerElements = viewChildren('menuTrigger', { read: ElementRef });
@@ -235,6 +248,83 @@ export class DndNavigator {
         .querySelector<HTMLElement>(`[data-drop="menu-trigger"][data-id="${menuId}"]`)
         ?.focus();
     }
+  }
+
+  // ---- Keyboard moves ----------------------------------------------------
+
+  /** Shortcuts advertised on every movable tile (`aria-keyshortcuts`). */
+  protected readonly moveShortcuts = 'Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight';
+
+  /** Moves the focused node with Alt+arrow keys. */
+  protected onMoveKeydown(event: KeyboardEvent, node: NavNode): void {
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+      return;
+    }
+    const direction = this.keyDirection(event.key);
+    if (!direction || this.dragging() || this.editingGroupId()) {
+      return;
+    }
+    // Keep MatMenu's own key handling (and the browser's Alt+arrow navigation) out of it.
+    event.preventDefault();
+    event.stopPropagation();
+
+    const target = keyboardTarget(this.items(), node.id, direction);
+    if (!target) {
+      this.announcer.announce(`${node.label} can't move ${this.describeDirection(direction)}`);
+      return;
+    }
+    if (this.applyMove(node, target)) {
+      this.focusNode(node.id);
+    }
+  }
+
+  private keyDirection(key: string): MoveDirection | null {
+    const rtl = this.dir?.value === 'rtl';
+    switch (key) {
+      case 'ArrowUp':
+        return 'up';
+      case 'ArrowDown':
+        return 'down';
+      case 'ArrowRight':
+        return rtl ? 'out' : 'in';
+      case 'ArrowLeft':
+        return rtl ? 'in' : 'out';
+      default:
+        return null;
+    }
+  }
+
+  private describeDirection(direction: MoveDirection): string {
+    return direction === 'in' ? 'further in' : direction === 'out' ? 'further out' : direction;
+  }
+
+  /**
+   * Focuses the tile of `id` once the moved tree has rendered: a rail tile, or an entry in its
+   * menu, which is opened first.
+   */
+  private focusNode(id: string): void {
+    const menuId = findNode(this.items(), id)?.parentId;
+    const inMenu = !!menuId && findNode(this.items(), menuId)?.node.kind === 'menu';
+    afterNextRender(
+      () => {
+        if (inMenu) {
+          // Opening the menu focuses its first entry; move focus once that has happened.
+          this.menuTrigger(menuId!)?.openMenu();
+          afterNextRender(() => this.findTile(id)?.focus(), { injector: this.injector });
+        } else {
+          this.findTile(id)?.focus();
+        }
+      },
+      { injector: this.injector },
+    );
+  }
+
+  private findTile(id: string): HTMLElement | null {
+    const selector = `button[data-id="${CSS.escape(id)}"]`;
+    return (
+      this.host.nativeElement.querySelector<HTMLElement>(selector) ??
+      this.document.querySelector<HTMLElement>(`[data-nav="${this.navId}"] ${selector}`)
+    );
   }
 
   // ---- Drag and drop -----------------------------------------------------
@@ -350,6 +440,15 @@ export class DndNavigator {
   }
 
   private drop(node: NavNode, target: DropTarget | null): void {
+    this.applyMove(node, target);
+  }
+
+  /**
+   * Moves `node` to `target` and updates which groups and menus are open: whatever now contains
+   * the node stays open, and everything opened along the way closes. Announces the move and
+   * returns whether the tree changed.
+   */
+  private applyMove(node: NavNode, target: DropTarget | null): boolean {
     const before = this.items();
     const after = target
       ? moveNode(before, node.id, target, {
@@ -384,10 +483,12 @@ export class DndNavigator {
     this.openGroups.set(open);
     this.autoExpanded = new Set();
 
-    if (after !== before) {
-      this.items.set(after);
-      this.announcer.announce(this.describeDrop(node, target!, after));
+    if (after === before) {
+      return false;
     }
+    this.items.set(after);
+    this.announcer.announce(this.describeDrop(node, target!, before, after));
+    return true;
   }
 
   private endDrag(): void {
@@ -541,8 +642,14 @@ export class DndNavigator {
     return target && canDrop(nodes, dragged.id, target) ? target : null;
   }
 
-  private describeDrop(node: NavNode, target: DropTarget, tree: readonly NavNode[]): string {
-    const label = (id: string) => findNode(tree, id)?.node.label ?? '';
+  private describeDrop(
+    node: NavNode,
+    target: DropTarget,
+    before: readonly NavNode[],
+    tree: readonly NavNode[],
+  ): string {
+    // Look in the old tree too: the move may have dissolved the group or menu it refers to.
+    const label = (id: string) => (findNode(tree, id) ?? findNode(before, id))?.node.label ?? '';
     switch (target.kind) {
       case 'root-end':
         return `${node.label} moved to the end`;
@@ -556,7 +663,10 @@ export class DndNavigator {
           : `${node.label} grouped with ${label(target.refId)}`;
       }
       default:
-        return `${node.label} moved ${target.kind} ${label(target.refId)}`;
+        // Placed next to its own group or menu: it moved out of it.
+        return findNode(before, node.id)?.parentId === target.refId
+          ? `${node.label} moved out of ${label(target.refId)}`
+          : `${node.label} moved ${target.kind} ${label(target.refId)}`;
     }
   }
 
