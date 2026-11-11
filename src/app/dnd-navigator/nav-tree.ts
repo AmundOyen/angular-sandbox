@@ -8,7 +8,7 @@ export interface NavItem {
 }
 
 /**
- * A trigger inside a group that opens its items in a menu (experimental "deep grouping").
+ * A trigger inside a group that opens its items in a menu ("deep grouping").
  * Menus only live inside groups and never nest.
  */
 export interface NavMenu {
@@ -37,7 +37,7 @@ export type DropTarget =
   | { readonly kind: 'before' | 'after'; readonly refId: string }
   /**
    * On top of an item: both items are merged into a new group (for a root item) or into a new
-   * menu (for an item inside a group, when menus are allowed).
+   * menu (for an item inside a group).
    */
   | { readonly kind: 'combine'; readonly refId: string }
   /** Appended to an existing group or menu. */
@@ -55,12 +55,7 @@ export interface NodeLocation {
 export type GroupFactory = (items: readonly NavItem[]) => NavGroup;
 export type MenuFactory = (items: readonly NavItem[]) => NavMenu;
 
-export interface DropOptions {
-  /** Whether dropping an item on an item inside a group creates a menu. Defaults to `false`. */
-  readonly allowMenus?: boolean;
-}
-
-export interface MoveOptions extends DropOptions {
+export interface MoveOptions {
   readonly groupFactory?: GroupFactory;
   readonly menuFactory?: MenuFactory;
 }
@@ -115,12 +110,7 @@ export function ancestorIds(nodes: readonly NavNode[], id: string): string[] {
 }
 
 /** Whether dropping `dragId` on `target` is allowed. */
-export function canDrop(
-  nodes: readonly NavNode[],
-  dragId: string,
-  target: DropTarget,
-  options: DropOptions = {},
-): boolean {
+export function canDrop(nodes: readonly NavNode[], dragId: string, target: DropTarget): boolean {
   const dragged = findNode(nodes, dragId);
   if (!dragged) {
     return false;
@@ -156,7 +146,8 @@ export function canDrop(
         return false;
       }
       const container = containerOf(ref);
-      return container === 'root' || (container === 'group' && !!options.allowMenus);
+      // Items in a menu can't combine: menus don't nest.
+      return container !== 'menu';
     }
     case 'before':
     case 'after': {
@@ -178,7 +169,7 @@ export function moveNode(
   options: MoveOptions = {},
 ): readonly NavNode[] {
   const dragged = findNode(nodes, dragId);
-  if (!dragged || !canDrop(nodes, dragId, target, options)) {
+  if (!dragged || !canDrop(nodes, dragId, target)) {
     return nodes;
   }
   const without = removeNode(nodes, dragId);
@@ -213,20 +204,6 @@ function renameIn<T extends NavNode>(node: T, id: string, label: string): T {
     return { ...node, children: node.children.map((child) => renameIn(child, id, label)) };
   }
   return node;
-}
-
-/** Returns a copy of `nodes` with the menu `menuId` replaced by its items, in place. */
-export function flattenMenu(nodes: readonly NavNode[], menuId: string): readonly NavNode[] {
-  return nodes.map((node) =>
-    node.kind === 'group' && node.children.some((child) => child.id === menuId)
-      ? {
-          ...node,
-          children: node.children.flatMap((child) =>
-            child.id === menuId && child.kind === 'menu' ? [...child.children] : [child],
-          ),
-        }
-      : node,
-  );
 }
 
 /**
