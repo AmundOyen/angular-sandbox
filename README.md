@@ -77,7 +77,7 @@ To change the aliases, edit that file and run the script again.
 | `iconSelect` (list only)  | `output<MaterialIcon>`                   | Emitted when the user selects or deselects an icon.                              |
 | `formControl` / `ngModel` | `string \| string[] \| null`             | Both components are form controls: a name, or an array of names with `multiple`. |
 
-The grid only renders the rows near the visible area. Set its height with `--material-icon-list-height`.
+The grid uses CDK virtual scroll, so only the rows near the visible area are rendered. Set its height with `--material-icon-list-height`.
 
 Keyboard support:
 

@@ -1,10 +1,10 @@
+import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import {
   afterRenderEffect,
   booleanAttribute,
   Component,
   computed,
   DestroyRef,
-  ElementRef,
   forwardRef,
   inject,
   input,
@@ -32,11 +32,8 @@ import { MATERIAL_ICONS } from './material-icons.data';
 export const ICON_ROW_HEIGHT = 104;
 /** Minimum width of a tile in px; the grid fits as many columns as it can. */
 export const ICON_MIN_TILE_WIDTH = 104;
-/** Size used before the grid has been measured (and in environments without layout). */
+/** Columns used before the grid has been measured (and in environments without layout). */
 const FALLBACK_COLUMNS = 6;
-const FALLBACK_HEIGHT = 480;
-/** Rows rendered above and below the visible ones, so fast scrolling shows no gaps. */
-const BUFFER_ROWS = 2;
 
 /** Value written by forms: an icon name, or a list of names when `multiple` is set. */
 export type MaterialIconValue = string | readonly string[] | null;
@@ -55,7 +52,7 @@ let nextId = 0;
  * `material-icon-list-compact` class to keep the category chips on one scrolling line.
  */
 @Component({
-  imports: [MatChipsModule, MatFormFieldModule, MatIconModule, MatInputModule],
+  imports: [MatChipsModule, MatFormFieldModule, MatIconModule, MatInputModule, ScrollingModule],
   selector: 'material-icon-list',
   styleUrl: './material-icon-list.scss',
   templateUrl: './material-icon-list.html',
@@ -116,10 +113,8 @@ export class MaterialIconList implements ControlValueAccessor {
     return icon ? this.optionId(icon) : null;
   });
 
-  private readonly viewport = viewChild.required<ElementRef<HTMLElement>>('viewport');
+  private readonly viewport = viewChild.required(CdkVirtualScrollViewport);
   private readonly viewportWidth = signal(0);
-  private readonly viewportHeight = signal(0);
-  private readonly scrollTop = signal(0);
   protected readonly columns = computed(() => {
     const width = this.viewportWidth();
     return width > 0 ? Math.max(1, Math.floor(width / ICON_MIN_TILE_WIDTH)) : FALLBACK_COLUMNS;
@@ -134,17 +129,8 @@ export class MaterialIconList implements ControlValueAccessor {
     return rows;
   });
   protected readonly rowHeight = ICON_ROW_HEIGHT;
-  /**
-   * The rows in and near the visible area. Only these are rendered: with thousands of icons,
-   * rendering them all would make the page slow.
-   */
-  protected readonly visibleRows = computed(() => {
-    const height = this.viewportHeight() || FALLBACK_HEIGHT;
-    const first = Math.floor(this.scrollTop() / ICON_ROW_HEIGHT) - BUFFER_ROWS;
-    const last = Math.ceil((this.scrollTop() + height) / ICON_ROW_HEIGHT) + BUFFER_ROWS;
-    const start = Math.max(0, first);
-    return { offset: start * ICON_ROW_HEIGHT, rows: this.rows().slice(start, Math.max(0, last)) };
-  });
+  /** Rows are rendered with CDK virtual scroll: only those in and near the visible area. */
+  protected readonly trackRow = (_: number, row: { index: number }) => row.index;
 
   private onChange: (value: MaterialIconValue) => void = () => {};
   private onTouched: () => void = () => {};
@@ -152,7 +138,7 @@ export class MaterialIconList implements ControlValueAccessor {
   constructor() {
     if (typeof ResizeObserver !== 'undefined') {
       const observer = new ResizeObserver(() => this.measure());
-      afterRenderEffect(() => observer.observe(this.viewport().nativeElement));
+      afterRenderEffect(() => observer.observe(this.viewport().elementRef.nativeElement));
       inject(DestroyRef).onDestroy(() => observer.disconnect());
     }
     // Scroll the highlighted icon into view after the grid has rendered.
@@ -165,7 +151,7 @@ export class MaterialIconList implements ControlValueAccessor {
     // Back to the top when the results change.
     afterRenderEffect(() => {
       this.filtered();
-      this.scrollTo(0);
+      this.viewport().scrollToOffset(0);
     });
   }
 
@@ -264,10 +250,6 @@ export class MaterialIconList implements ControlValueAccessor {
     }
   }
 
-  protected onScroll(): void {
-    this.scrollTop.set(this.viewport().nativeElement.scrollTop);
-  }
-
   protected onCategoriesChange(value: MaterialIconCategory[] | undefined): void {
     this.categories.set(value ?? []);
   }
@@ -278,28 +260,23 @@ export class MaterialIconList implements ControlValueAccessor {
   }
 
   private measure(): void {
-    const element = this.viewport().nativeElement;
+    const element = this.viewport().elementRef.nativeElement;
     // Width inside the padding, so tiles never overflow.
     const style = getComputedStyle(element);
     const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) || 0;
     this.viewportWidth.set(element.clientWidth - padding);
-    this.viewportHeight.set(element.clientHeight);
   }
 
   private scrollToRow(row: number): void {
-    const element = this.viewport().nativeElement;
+    const viewport = this.viewport();
     const top = row * ICON_ROW_HEIGHT;
-    const height = element.clientHeight;
-    if (top < element.scrollTop) {
-      this.scrollTo(top);
-    } else if (height > 0 && top + ICON_ROW_HEIGHT > element.scrollTop + height) {
-      this.scrollTo(top + ICON_ROW_HEIGHT - height);
+    const offset = viewport.measureScrollOffset();
+    const height = viewport.getViewportSize();
+    if (top < offset) {
+      viewport.scrollToOffset(top);
+    } else if (height > 0 && top + ICON_ROW_HEIGHT > offset + height) {
+      viewport.scrollToOffset(top + ICON_ROW_HEIGHT - height);
     }
-  }
-
-  private scrollTo(top: number): void {
-    this.viewport().nativeElement.scrollTop = top;
-    this.scrollTop.set(top);
   }
 
   // ControlValueAccessor

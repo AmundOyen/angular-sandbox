@@ -31,7 +31,6 @@ $row-height: 104px;
 
 .viewport {
   height: var(--material-icon-list-height, 480px);
-  overflow-y: auto;
   overscroll-behavior: contain;
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: var(--mat-sys-corner-medium);
@@ -42,14 +41,6 @@ $row-height: 104px;
     outline: 2px solid var(--mat-sys-primary);
     outline-offset: 2px;
   }
-}
-
-.spacer {
-  position: relative;
-}
-
-.window {
-  will-change: transform;
 }
 
 .row {

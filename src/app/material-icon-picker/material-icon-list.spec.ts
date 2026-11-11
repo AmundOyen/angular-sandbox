@@ -45,7 +45,7 @@ describe('MaterialIconList', () => {
   const tiles = () => [...element.querySelectorAll<HTMLElement>('.tile')];
   const labels = () => tiles().map((t) => t.querySelector('.label')?.textContent?.trim());
   const tile = (name: string) => element.querySelector<HTMLElement>(`[id$="-${name}"]`)!;
-  const grid = () => element.querySelector<HTMLElement>('.viewport')!;
+  const grid = () => element.querySelector<HTMLElement>('cdk-virtual-scroll-viewport')!;
   const search = () => element.querySelector<HTMLInputElement>('input[type="search"]')!;
   const key = (target: HTMLElement, key: string) =>
     target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
