@@ -79,16 +79,6 @@
                     [ngTemplateOutletContext]="{ $implicit: child, parent: node.id }"
                   />
                 </li>
-              } @else if (!experimental()) {
-                <!-- Experimental flag off: show the menu's items as plain group items. -->
-                @for (menuChild of child.children; track menuChild.id) {
-                  <li class="nav-slot">
-                    <ng-container
-                      [ngTemplateOutlet]="itemTile"
-                      [ngTemplateOutletContext]="{ $implicit: menuChild, parent: child.id }"
-                    />
-                  </li>
-                }
               } @else {
                 <li class="nav-slot menu-slot">
                   <!--

@@ -1,7 +1,6 @@
 import {
   ancestorIds,
   canDrop,
-  flattenMenu,
   GroupFactory,
   MenuFactory,
   moveNode,
@@ -158,7 +157,6 @@ describe('nav-tree', () => {
       ['a group into a group', 'g', { kind: 'into', groupId: 'h' }],
       ['a group next to a grouped item', 'g', { kind: 'before', refId: 'p' }],
       ['a group onto an item', 'g', { kind: 'combine', refId: 'a' }],
-      ['an item onto a grouped item', 'a', { kind: 'combine', refId: 'x' }],
       ['an item onto a group', 'a', { kind: 'combine', refId: 'g' }],
       ['an item onto itself', 'a', { kind: 'combine', refId: 'a' }],
       ['an item next to itself', 'a', { kind: 'before', refId: 'a' }],
@@ -182,31 +180,34 @@ describe('nav-tree', () => {
   });
 
   describe('deep grouping (menus)', () => {
-    const allowMenus = { allowMenus: true, menuFactory: fixedMenu };
+    const withMenu = { menuFactory: fixedMenu };
 
     it('creates a menu when an item is dropped on an item inside a group', () => {
       const tree = [item('a'), group('g', 'x', 'y')];
-      expect(shape(moveNode(tree, 'a', { kind: 'combine', refId: 'y' }, allowMenus))).toEqual([
+      expect(shape(moveNode(tree, 'a', { kind: 'combine', refId: 'y' }, withMenu))).toEqual([
         'g[x,m[y,a]]',
       ]);
     });
 
-    it('only creates menus when allowed', () => {
+    it('uses the default menu factory', () => {
       const tree = [item('a'), group('g', 'x', 'y')];
-      expect(canDrop(tree, 'a', { kind: 'combine', refId: 'y' })).toBe(false);
-      expect(moveNode(tree, 'a', { kind: 'combine', refId: 'y' })).toBe(tree);
+      const [result] = moveNode(tree, 'a', { kind: 'combine', refId: 'y' });
+      const created = result.kind === 'group' ? result.children[1] : undefined;
+      expect(created?.kind).toBe('menu');
+      expect(created?.id).toMatch(/^menu-/);
+      expect(created?.label).toBe('Menu');
     });
 
     it('creates a menu from two items of the same group', () => {
       const tree = [group('g', 'x', 'y', 'z')];
-      expect(shape(moveNode(tree, 'z', { kind: 'combine', refId: 'x' }, allowMenus))).toEqual([
+      expect(shape(moveNode(tree, 'z', { kind: 'combine', refId: 'x' }, withMenu))).toEqual([
         'g[m[x,z],y]',
       ]);
     });
 
     it('keeps a group whose only child is a menu', () => {
       const tree = [group('g', 'x', 'y')];
-      expect(shape(moveNode(tree, 'x', { kind: 'combine', refId: 'y' }, allowMenus))).toEqual([
+      expect(shape(moveNode(tree, 'x', { kind: 'combine', refId: 'y' }, withMenu))).toEqual([
         'g[m[y,x]]',
       ]);
     });
@@ -247,12 +248,6 @@ describe('nav-tree', () => {
       expect(findMenuLabel(tree)).toBe('m');
     });
 
-    it('flattens a menu into its group, in place', () => {
-      const tree = [deepGroup('g', 'x', menu('m', 'p', 'q'), 'y'), item('a')];
-      expect(shape(flattenMenu(tree, 'm'))).toEqual(['g[x,p,q,y]', 'a']);
-      expect(shape(tree)).toEqual(['g[x,m[p,q],y]', 'a']);
-    });
-
     it('normalize flattens menus at the root, which only invalid data can produce', () => {
       const tree = [menu('m', 'p', 'q')];
       expect(shape(normalize(tree))).toEqual(['p', 'q']);
@@ -271,7 +266,7 @@ describe('nav-tree', () => {
         ['an item onto a menu trigger', 'a', { kind: 'combine', refId: 'm' }],
         ['a menu onto an item', 'm', { kind: 'combine', refId: 'u' }],
       ] as const)('rejects %s', (_, dragId, target) => {
-        expect(canDrop(tree, dragId, target, { allowMenus: true })).toBe(false);
+        expect(canDrop(tree, dragId, target)).toBe(false);
       });
     });
   });

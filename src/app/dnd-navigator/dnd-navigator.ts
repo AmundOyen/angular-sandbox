@@ -1,7 +1,6 @@
 import {
   Component,
   DestroyRef,
-  booleanAttribute,
   DOCUMENT,
   ElementRef,
   computed,
@@ -33,7 +32,6 @@ import {
   createGroup,
   createMenu,
   findNode,
-  flattenMenu,
   moveNode,
   renameGroup,
 } from './nav-tree';
@@ -76,16 +74,12 @@ interface ActiveDrag {
  * - Drop on the middle of a root item to group the two items.
  * - Hover over a collapsed group to expand it, or drop on its header to append to it.
  * - Groups left with a single item are ungrouped automatically.
- *
- * With `experimental` set, items can also be grouped one level deeper ("deep grouping"):
  * - Drop on the middle of an item inside a group to put both items in a menu. A new menu trigger
  *   takes the item's place in the group and opens the items in a `MatMenu`.
  * - Drop on the middle of a menu trigger to append to the menu; hover to open it while dragging.
  * - Drag items within an open menu to reorder them, or out of it into the rail.
  * - Menus left with a single item are replaced by that item.
  * - While a menu is open the rail stays usable; a click outside the menu closes it.
- * Without the flag, existing menus are shown flattened into their group, and dropping next to one
- * of their items flattens that menu in the tree so the item lands where it was dropped.
  *
  * Bind with `[(items)]`; every change emits a new, immutable tree. The button at the top switches
  * between the compact rail and a wide drawer; bind `[(expanded)]` to control or remember that state.
@@ -99,7 +93,6 @@ interface ActiveDrag {
     role: 'navigation',
     '[class.is-dragging]': 'dragging() !== null',
     '[class.drawer]': 'expanded()',
-    '[class.experimental]': 'experimental()',
   },
 })
 export class DndNavigator {
@@ -110,13 +103,7 @@ export class DndNavigator {
   readonly activeId = input<string | null>(null);
   /** Creates groups when two items are combined. Override to control ids and default labels. */
   readonly groupFactory = input<GroupFactory>(createGroup);
-  /**
-   * Opts in to experimental navigator behaviour that is still being tried out. Off by default, so
-   * existing usages are unaffected. Behaviour behind this flag may change or be removed at any time.
-   * Branch on it in code with `experimental()`, or in styles with `:host(.experimental)`.
-   */
-  readonly experimental = input(false, { transform: booleanAttribute });
-  /** Creates menus when two items in a group are combined (experimental). */
+  /** Creates menus when two items in a group are combined. Override to control ids and labels. */
   readonly menuFactory = input<MenuFactory>(createMenu);
 
   readonly itemSelect = output<NavItem>();
@@ -364,17 +351,12 @@ export class DndNavigator {
 
   private drop(node: NavNode, target: DropTarget | null): void {
     const before = this.items();
-    // With the flag off, menus are shown flattened into their group. Dropping next to one of those
-    // items should land exactly there, in the group, so that menu is flattened for real first.
-    const base = this.flattenHiddenMenu(before, target);
-    const moved = target
-      ? moveNode(base, node.id, target, {
+    const after = target
+      ? moveNode(before, node.id, target, {
           groupFactory: this.groupFactory(),
           menuFactory: this.menuFactory(),
-          allowMenus: this.experimental(),
         })
-      : base;
-    const after = moved === base ? before : moved;
+      : before;
 
     // Keep whatever now contains the dropped node open; close everything opened along the way.
     const containers = after !== before ? ancestorIds(after, node.id) : [];
@@ -406,18 +388,6 @@ export class DndNavigator {
       this.items.set(after);
       this.announcer.announce(this.describeDrop(node, target!, after));
     }
-  }
-
-  private flattenHiddenMenu(
-    nodes: readonly NavNode[],
-    target: DropTarget | null,
-  ): readonly NavNode[] {
-    if (this.experimental() || (target?.kind !== 'before' && target?.kind !== 'after')) {
-      return nodes;
-    }
-    const parentId = findNode(nodes, target.refId)?.parentId;
-    const parent = parentId ? findNode(nodes, parentId)?.node : undefined;
-    return parent?.kind === 'menu' ? flattenMenu(nodes, parent.id) : nodes;
   }
 
   private endDrag(): void {
@@ -546,8 +516,6 @@ export class DndNavigator {
           : ratio > 1 - EDGE_ZONE
             ? { kind: 'after', refId: id }
             : { kind: 'into', groupId: id };
-    } else if (kind === 'item' && zone.dataset['parent'] && !this.experimental()) {
-      target = { kind: ratio < 0.5 ? 'before' : 'after', refId: id };
     } else if (kind === 'item') {
       target =
         ratio < EDGE_ZONE
@@ -570,9 +538,7 @@ export class DndNavigator {
       target = null;
     }
 
-    return target && canDrop(nodes, dragged.id, target, { allowMenus: this.experimental() })
-      ? target
-      : null;
+    return target && canDrop(nodes, dragged.id, target) ? target : null;
   }
 
   private describeDrop(node: NavNode, target: DropTarget, tree: readonly NavNode[]): string {

@@ -6,18 +6,10 @@
       browser.
     </p>
   </div>
-  <div class="page-actions">
-    <mat-slide-toggle
-      hideIcon
-      [checked]="experimental()"
-      (change)="experimental.set($event.checked)"
-      >Experimental</mat-slide-toggle
-    >
-    <button matButton="tonal" (click)="reset()">
-      <mat-icon>restart_alt</mat-icon>
-      Reset
-    </button>
-  </div>
+  <button matButton="tonal" (click)="reset()">
+    <mat-icon>restart_alt</mat-icon>
+    Reset
+  </button>
 </header>
 
 <div class="demo">
@@ -27,7 +19,6 @@
     [(items)]="items"
     [(expanded)]="navExpanded"
     [activeId]="activeId()"
-    [experimental]="experimental()"
     (itemSelect)="active.set($event)"
   />
 
@@ -43,28 +34,19 @@
         <li>Drag items between groups, or out of a group into the root list.</li>
         <li>A group left with one item is ungrouped automatically.</li>
         <li>
-          Double-click a group, or press F2 on it, to rename it. Press Escape to cancel a drag.
+          Open a group and drop an item on the middle of one of its items to put both in a menu.
+        </li>
+        <li>Drop an item on the middle of a menu to add it, or hover to open the menu.</li>
+        <li>Drag items within an open menu to reorder them, or out of it into the rail.</li>
+        <li>A menu left with one item is replaced by that item.</li>
+        <li>
+          Double-click a group, or press F2 on it, to rename it. Press F2 on a menu, or use "Rename
+          menu" inside it, to rename the menu. Press Escape to cancel a drag.
         </li>
         <li>On touch devices, press and hold an item to start dragging.</li>
         <li>Use the menu button at the top of the navigator to expand or minimize it.</li>
       </ul>
     </section>
-
-    @if (experimental()) {
-      <section>
-        <h3>Experimental: deep grouping</h3>
-        <ul>
-          <li>
-            Open a group and drop an item on the middle of one of its items to put both in a menu.
-          </li>
-          <li>Drop an item on the middle of a menu to add it, or hover to open the menu.</li>
-          <li>Drag items within an open menu to reorder them, or out of it into the rail.</li>
-          <li>A menu left with one item is replaced by that item.</li>
-          <li>Press F2 on a menu, or use "Rename menu" inside it, to rename it.</li>
-          <li>Turn the flag off to see menus flattened into their group.</li>
-        </ul>
-      </section>
-    }
 
     <section>
       <h3>Emitted tree</h3>

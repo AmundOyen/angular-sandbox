@@ -9,7 +9,6 @@ import { NavItem, NavNode } from './nav-tree';
   template: `<dnd-navigator
     [(items)]="items"
     [(expanded)]="expanded"
-    [experimental]="experimental()"
     (itemSelect)="selected.set($event)"
   />`,
 })
@@ -28,7 +27,6 @@ class Host {
   ]);
   readonly selected = signal<NavItem | null>(null);
   readonly expanded = signal(false);
-  readonly experimental = signal(false);
 }
 
 describe('DndNavigator', () => {
@@ -41,15 +39,6 @@ describe('DndNavigator', () => {
     fixture = TestBed.createComponent(Host);
     element = fixture.nativeElement;
     await fixture.whenStable();
-  });
-
-  it('leaves experimental behaviour off unless opted in', async () => {
-    const navigator = query('dnd-navigator');
-    expect(navigator.classList).not.toContain('experimental');
-
-    fixture.componentInstance.experimental.set(true);
-    await fixture.whenStable();
-    expect(navigator.classList).toContain('experimental');
   });
 
   it('renders each item with its icon above the label', () => {
@@ -151,16 +140,7 @@ describe('DndNavigator', () => {
       await fixture.whenStable();
     });
 
-    it('flattens menus into their group while the flag is off', () => {
-      expect(element.querySelector('[data-drop="menu-trigger"]')).toBeNull();
-      expect(query('[data-id="music"]').dataset['parent']).toBe('audio');
-      expect(query('[data-id="podcasts"]')).toBeTruthy();
-    });
-
-    it('shows a menu trigger that opens the items in a menu when the flag is on', async () => {
-      fixture.componentInstance.experimental.set(true);
-      await fixture.whenStable();
-
+    it('shows a menu trigger that opens the items in a menu', async () => {
       const trigger = query('[data-drop="menu-trigger"]');
       expect(trigger.textContent).toContain('Audio');
       expect(element.querySelector('[data-id="music"]')).toBeNull();
@@ -177,8 +157,6 @@ describe('DndNavigator', () => {
     });
 
     it('keeps the rail usable while a menu is open and closes it on an outside click', async () => {
-      fixture.componentInstance.experimental.set(true);
-      await fixture.whenStable();
       const trigger = query('[data-drop="menu-trigger"]');
 
       trigger.click();
@@ -193,8 +171,6 @@ describe('DndNavigator', () => {
     });
 
     it('toggles the menu with its trigger', async () => {
-      fixture.componentInstance.experimental.set(true);
-      await fixture.whenStable();
       const trigger = query('[data-drop="menu-trigger"]');
 
       trigger.click();
