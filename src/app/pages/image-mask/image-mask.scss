@@ -86,10 +86,16 @@ h3 {
   }
 }
 
-.ratio {
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 12px;
-  max-width: 100%;
-  overflow-x: auto;
+
+  mat-button-toggle-group {
+    max-width: 100%;
+    overflow-x: auto;
+  }
 }
 
 .readout {
@@ -115,6 +121,10 @@ h3 {
   img {
     position: absolute;
     max-width: none;
+  }
+
+  &.round {
+    border-radius: 50%;
   }
 }
 

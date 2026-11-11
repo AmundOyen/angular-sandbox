@@ -79,6 +79,34 @@ describe('ImageMask', () => {
     expect(element.querySelector('.readout')?.textContent).toContain('320 × 320 px');
   });
 
+  it('clips to an oval that fills the selection', async () => {
+    await selectFile(png());
+    store.setShape('oval');
+    store.mode.set('clip');
+    await fixture.whenStable();
+
+    // An oval keeps the free-form rectangle.
+    expect(store.rect()).toEqual({ x: 10, y: 10, width: 80, height: 80 });
+    const image = element.querySelector('.masked-clip') as HTMLImageElement;
+    expect(image.style.clipPath).toBe('ellipse(40% 40% at 50% 50%)');
+    expect(element.querySelector('app-rect-selector .selection.round')).toBeTruthy();
+  });
+
+  it('locks a circle to 1:1 in image pixels', async () => {
+    await selectFile(png());
+    store.setShape('circle');
+    await fixture.whenStable();
+
+    expect(store.rect()).toEqual({ x: 30, y: 10, width: 40, height: 80 });
+    expect(element.querySelector('.readout')?.textContent).toContain('320 × 320 px');
+    expect(element.querySelector('.masked-crop.round')).toBeTruthy();
+    expect(element.querySelector('.css')?.textContent).toContain('border-radius: 50%;');
+
+    // Switching back to a rectangle frees the ratio again.
+    store.setShape('rect');
+    expect(store.percentRatio()).toBeNull();
+  });
+
   it('rejects files that are not images', async () => {
     await selectFile(new File(['hi'], 'notes.txt', { type: 'text/plain' }));
 

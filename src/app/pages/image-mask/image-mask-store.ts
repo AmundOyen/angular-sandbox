@@ -5,6 +5,7 @@ import {
   fitToRatio,
   MaskMode,
   MaskRect,
+  MaskShape,
   RATIO_PRESETS,
   RatioPreset,
   toPercentRatio,
@@ -22,13 +23,18 @@ export class ImageMaskStore {
   readonly rect = signal<MaskRect>(DEFAULT_RECT);
   readonly ratio = signal<RatioPreset>(RATIO_PRESETS[0]);
   readonly mode = signal<MaskMode>('crop');
+  readonly shape = signal<MaskShape>('rect');
   readonly error = signal<string | null>(null);
   readonly loading = signal(false);
 
-  /** The selected ratio expressed as percent width / percent height for the current image. */
+  /** A circle is always 1:1 in pixels, whatever ratio preset is selected. */
+  readonly ratioLocked = computed(() => this.shape() === 'circle');
+
+  /** The ratio in effect, expressed as percent width / percent height for the current image. */
   readonly percentRatio = computed(() => {
     const image = this.image();
-    return image ? toPercentRatio(this.ratio().value, image.width / image.height) : null;
+    const value = this.ratioLocked() ? 1 : this.ratio().value;
+    return image ? toPercentRatio(value, image.width / image.height) : null;
   });
 
   async open(file: File): Promise<void> {
@@ -63,6 +69,11 @@ export class ImageMaskStore {
       return;
     }
     this.ratio.set(preset);
+    this.rect.update((rect) => fitToRatio(rect, this.percentRatio()));
+  }
+
+  setShape(shape: MaskShape): void {
+    this.shape.set(shape);
     this.rect.update((rect) => fitToRatio(rect, this.percentRatio()));
   }
 

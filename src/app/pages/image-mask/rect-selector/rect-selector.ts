@@ -32,6 +32,8 @@ export class RectSelector {
   readonly alt = input('');
   /** Width / height of the rectangle in percent space, or null for free-form. */
   readonly ratio = input<number | null>(null);
+  /** Shows the visible area as an ellipse filling the rectangle. */
+  readonly round = input(false);
   readonly rect = model.required<MaskRect>();
 
   protected readonly box = computed(() => {
