@@ -3,6 +3,7 @@ export type {
   DropTarget,
   GroupFactory,
   MenuFactory,
+  MoveDirection,
   MoveOptions,
   NavGroup,
   NavGroupChild,
@@ -10,4 +11,12 @@ export type {
   NavMenu,
   NavNode,
 } from './nav-tree';
-export { canDrop, createGroup, createMenu, moveNode, normalize, renameGroup } from './nav-tree';
+export {
+  canDrop,
+  createGroup,
+  createMenu,
+  keyboardTarget,
+  moveNode,
+  normalize,
+  renameGroup,
+} from './nav-tree';

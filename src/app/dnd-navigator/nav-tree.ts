@@ -157,6 +157,62 @@ export function canDrop(nodes: readonly NavNode[], dragId: string, target: DropT
   }
 }
 
+/** Direction of a keyboard move. `in`/`out` move one level deeper or shallower. */
+export type MoveDirection = 'up' | 'down' | 'in' | 'out';
+
+/**
+ * Where a keyboard move of `id` in `direction` should go, or `null` when it can't move that way.
+ * - `up`/`down`: past the previous/next sibling; at the start/end of a group or menu, out of it
+ *   and before/after it.
+ * - `in`: into the previous sibling. A group or menu gets the node appended; an item is combined
+ *   with it into a new group (at the root) or menu (inside a group).
+ * - `out`: out of the containing group or menu, right after it.
+ */
+export function keyboardTarget(
+  nodes: readonly NavNode[],
+  id: string,
+  direction: MoveDirection,
+): DropTarget | null {
+  const location = findNode(nodes, id);
+  if (!location) {
+    return null;
+  }
+  const { parentId, index } = location;
+  const parent = parentId ? findNode(nodes, parentId)?.node : undefined;
+  const siblings: readonly NavNode[] = parent && parent.kind !== 'item' ? parent.children : nodes;
+  const previous = siblings[index - 1];
+  const next = siblings[index + 1];
+
+  let target: DropTarget | null = null;
+  switch (direction) {
+    case 'up':
+      target = previous
+        ? { kind: 'before', refId: previous.id }
+        : parentId
+          ? { kind: 'before', refId: parentId }
+          : null;
+      break;
+    case 'down':
+      target = next
+        ? { kind: 'after', refId: next.id }
+        : parentId
+          ? { kind: 'after', refId: parentId }
+          : null;
+      break;
+    case 'in':
+      target = !previous
+        ? null
+        : previous.kind === 'item'
+          ? { kind: 'combine', refId: previous.id }
+          : { kind: 'into', groupId: previous.id };
+      break;
+    case 'out':
+      target = parentId ? { kind: 'after', refId: parentId } : null;
+      break;
+  }
+  return target && canDrop(nodes, id, target) ? target : null;
+}
+
 /**
  * Moves `dragId` to `target` and returns a new tree. The input is never mutated.
  * Groups and menus that end up with a single item are unwrapped, and empty ones are removed.

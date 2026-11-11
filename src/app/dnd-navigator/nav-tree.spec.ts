@@ -2,7 +2,9 @@ import {
   ancestorIds,
   canDrop,
   GroupFactory,
+  keyboardTarget,
   MenuFactory,
+  MoveDirection,
   moveNode,
   NavGroupChild,
   NavItem,
@@ -268,6 +270,71 @@ describe('nav-tree', () => {
       ] as const)('rejects %s', (_, dragId, target) => {
         expect(canDrop(tree, dragId, target)).toBe(false);
       });
+    });
+  });
+
+  describe('keyboard moves', () => {
+    const tree = [
+      item('a'),
+      deepGroup('g', 'x', menu('m', 'p', 'q'), 'y'),
+      item('b'),
+      group('h', 'u', 'v'),
+    ];
+    const move = (id: string, direction: MoveDirection) => {
+      const target = keyboardTarget(tree, id, direction);
+      return target ? shape(moveNode(tree, id, target, { groupFactory: fixedGroup })) : null;
+    };
+
+    it('moves past the previous and next sibling', () => {
+      expect(move('b', 'up')).toEqual(['a', 'b', 'g[x,m[p,q],y]', 'h[u,v]']);
+      expect(move('a', 'down')).toEqual(['g[x,m[p,q],y]', 'a', 'b', 'h[u,v]']);
+      expect(move('q', 'up')).toEqual(['a', 'g[x,m[q,p],y]', 'b', 'h[u,v]']);
+      expect(move('x', 'down')).toEqual(['a', 'g[m[p,q],x,y]', 'b', 'h[u,v]']);
+    });
+
+    it('moves out of a group or menu at either end', () => {
+      expect(move('x', 'up')).toEqual(['a', 'x', 'g[m[p,q],y]', 'b', 'h[u,v]']);
+      expect(move('y', 'down')).toEqual(['a', 'g[x,m[p,q]]', 'y', 'b', 'h[u,v]']);
+      // The menu is left with one item and unwraps.
+      expect(move('p', 'up')).toEqual(['a', 'g[x,p,q,y]', 'b', 'h[u,v]']);
+    });
+
+    it('moves into the group or menu above', () => {
+      expect(move('b', 'in')).toEqual(['a', 'g[x,m[p,q],y,b]', 'h[u,v]']);
+      expect(move('y', 'in')).toEqual(['a', 'g[x,m[p,q,y]]', 'b', 'h[u,v]']);
+    });
+
+    it('combines with the item above into a group or menu', () => {
+      expect(keyboardTarget([item('a'), item('b')], 'b', 'in')).toEqual({
+        kind: 'combine',
+        refId: 'a',
+      });
+      expect(keyboardTarget(tree, 'v', 'in')).toEqual({ kind: 'combine', refId: 'u' });
+    });
+
+    it('moves out of the containing group or menu', () => {
+      expect(move('u', 'out')).toEqual(['a', 'g[x,m[p,q],y]', 'b', 'v', 'u']);
+      expect(move('q', 'out')).toEqual(['a', 'g[x,p,q,y]', 'b', 'h[u,v]']);
+    });
+
+    it.each([
+      ['the first root node up', 'a', 'up'],
+      ['the last root node down', 'h', 'down'],
+      ['a root node out', 'b', 'out'],
+      ['the first root node in', 'a', 'in'],
+      ['a group into a group', 'h', 'in'],
+      ['an item in a menu in (menus never nest)', 'q', 'in'],
+      ['a menu out to the root', 'm', 'out'],
+      ['an unknown node', 'nope', 'up'],
+    ] as const)('rejects moving %s', (_, id, direction) => {
+      expect(keyboardTarget(tree, id, direction)).toBeNull();
+    });
+
+    it('rejects moving a menu out of either end of its group', () => {
+      const menuFirst = [deepGroup('g', menu('m', 'p', 'q'), 'x')];
+      const menuLast = [deepGroup('g', 'x', menu('m', 'p', 'q'))];
+      expect(keyboardTarget(menuFirst, 'm', 'up')).toBeNull();
+      expect(keyboardTarget(menuLast, 'm', 'down')).toBeNull();
     });
   });
 });

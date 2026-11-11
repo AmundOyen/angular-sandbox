@@ -1,4 +1,5 @@
 import { Component, signal } from '@angular/core';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { DndNavigator } from './dnd-navigator';
@@ -180,6 +181,95 @@ describe('DndNavigator', () => {
       trigger.click();
       await fixture.whenStable();
       expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    });
+  });
+
+  describe('keyboard moves', () => {
+    const altKey = (target: HTMLElement, key: string) => {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        altKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      target.dispatchEvent(event);
+      return event;
+    };
+    // LiveAnnouncer writes to its live region after a delay, so check what it was asked to say.
+    let announce: ReturnType<typeof vi.spyOn>;
+    beforeEach(() => {
+      announce = vi.spyOn(TestBed.inject(LiveAnnouncer), 'announce');
+    });
+    const announced = () => announce.mock.lastCall?.[0];
+    const ids = () =>
+      fixture.componentInstance
+        .items()
+        .map((node) =>
+          node.kind === 'item' ? node.id : `${node.id}[${node.children.map((c) => c.id)}]`,
+        );
+
+    it('advertises the shortcuts on movable tiles', () => {
+      expect(query('[data-id="home"]').getAttribute('aria-keyshortcuts')).toContain('Alt+ArrowUp');
+      expect(query('[data-drop="group-header"]').getAttribute('aria-keyshortcuts')).toContain(
+        'Alt+ArrowRight',
+      );
+    });
+
+    it('moves the focused item with Alt+ArrowDown and keeps focus on it', async () => {
+      const home = query('[data-id="home"]');
+      home.focus();
+      const event = altKey(home, 'ArrowDown');
+      await fixture.whenStable();
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(ids()).toEqual(['media[photos,music]', 'home']);
+      expect(document.activeElement).toBe(query('[data-id="home"]'));
+    });
+
+    it('moves an item into the group above with Alt+ArrowRight and opens the group', async () => {
+      fixture.componentInstance.items.update((items) => [items[1], items[0]]);
+      await fixture.whenStable();
+
+      altKey(query('[data-id="home"]'), 'ArrowRight');
+      await fixture.whenStable();
+
+      expect(ids()).toEqual(['media[photos,music,home]']);
+      expect(query('[data-drop="group-header"]').getAttribute('aria-expanded')).toBe('true');
+      expect(document.activeElement).toBe(query('[data-id="home"]'));
+    });
+
+    it('moves an item out of its group with Alt+ArrowLeft', async () => {
+      query('[data-drop="group-header"]').click();
+      await fixture.whenStable();
+
+      altKey(query('[data-id="photos"]'), 'ArrowLeft');
+      await fixture.whenStable();
+
+      expect(ids()).toEqual(['home', 'music', 'photos']);
+      // The group was dissolved by the move, but is still named in the announcement.
+      expect(announced()).toBe('Photos moved out of Media');
+    });
+
+    it('leaves the tree alone when the node cannot move that way', async () => {
+      const event = altKey(query('[data-id="home"]'), 'ArrowUp');
+      await fixture.whenStable();
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(ids()).toEqual(['home', 'media[photos,music]']);
+      expect(announced()).toBe("Home can't move up");
+    });
+
+    it('ignores arrow keys without Alt', async () => {
+      const event = new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        bubbles: true,
+        cancelable: true,
+      });
+      query('[data-id="home"]').dispatchEvent(event);
+      await fixture.whenStable();
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(ids()).toEqual(['home', 'media[photos,music]']);
     });
   });
 });
