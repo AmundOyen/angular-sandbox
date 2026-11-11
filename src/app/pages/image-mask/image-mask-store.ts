@@ -3,12 +3,16 @@ import { ImageLoader, LoadedImage } from './image-loader';
 import {
   DEFAULT_RECT,
   fitToRatio,
+  hasOrientation,
   MaskMode,
   MaskRect,
   MaskShape,
+  Orientation,
+  orientRatio,
   RATIO_PRESETS,
   RatioPreset,
   toPercentRatio,
+  turnRect,
 } from './mask';
 
 /**
@@ -24,16 +28,17 @@ export class ImageMaskStore {
   readonly ratio = signal<RatioPreset>(RATIO_PRESETS[0]);
   readonly mode = signal<MaskMode>('crop');
   readonly shape = signal<MaskShape>('rect');
+  readonly orientation = signal<Orientation>('landscape');
   readonly error = signal<string | null>(null);
   readonly loading = signal(false);
 
-  /** A circle is always 1:1 in pixels, whatever ratio preset is selected. */
-  readonly ratioLocked = computed(() => this.shape() === 'circle');
+  /** Free-form and 1:1 look the same either way round, so only other ratios can be turned. */
+  readonly orientable = computed(() => hasOrientation(this.ratio().value));
 
   /** The ratio in effect, expressed as percent width / percent height for the current image. */
   readonly percentRatio = computed(() => {
     const image = this.image();
-    const value = this.ratioLocked() ? 1 : this.ratio().value;
+    const value = orientRatio(this.ratio().value, this.orientation());
     return image ? toPercentRatio(value, image.width / image.height) : null;
   });
 
@@ -74,7 +79,19 @@ export class ImageMaskStore {
 
   setShape(shape: MaskShape): void {
     this.shape.set(shape);
-    this.rect.update((rect) => fitToRatio(rect, this.percentRatio()));
+  }
+
+  setOrientation(orientation: Orientation): void {
+    const image = this.image();
+    if (orientation === this.orientation()) {
+      return;
+    }
+    this.orientation.set(orientation);
+    if (image) {
+      // Turn the current area rather than refit it, so flipping back and forth doesn't shrink it.
+      const turned = turnRect(this.rect(), image.width / image.height);
+      this.rect.set(fitToRatio(turned, this.percentRatio()));
+    }
   }
 
   private release(): void {

@@ -79,32 +79,57 @@ describe('ImageMask', () => {
     expect(element.querySelector('.readout')?.textContent).toContain('320 × 320 px');
   });
 
-  it('clips to an oval that fills the selection', async () => {
+  it('clips to an ellipse that fills the selection', async () => {
     await selectFile(png());
-    store.setShape('oval');
+    store.setShape('circle');
     store.mode.set('clip');
     await fixture.whenStable();
 
-    // An oval keeps the free-form rectangle.
+    // The shape doesn't change the selection; with Free it is an oval.
     expect(store.rect()).toEqual({ x: 10, y: 10, width: 80, height: 80 });
     const image = element.querySelector('.masked-clip') as HTMLImageElement;
     expect(image.style.clipPath).toBe('ellipse(40% 40% at 50% 50%)');
     expect(element.querySelector('app-rect-selector .selection.round')).toBeTruthy();
   });
 
-  it('locks a circle to 1:1 in image pixels', async () => {
+  it('makes a true circle with a 1:1 ratio', async () => {
     await selectFile(png());
     store.setShape('circle');
+    store.setRatio('1:1');
     await fixture.whenStable();
 
-    expect(store.rect()).toEqual({ x: 30, y: 10, width: 40, height: 80 });
     expect(element.querySelector('.readout')?.textContent).toContain('320 × 320 px');
     expect(element.querySelector('.masked-crop.round')).toBeTruthy();
     expect(element.querySelector('.css')?.textContent).toContain('border-radius: 50%;');
+  });
 
-    // Switching back to a rectangle frees the ratio again.
-    store.setShape('rect');
-    expect(store.percentRatio()).toBeNull();
+  it('offers portrait and landscape only for ratios that have them', async () => {
+    const orientationToggle = () => element.querySelector('[aria-label="Orientation"]');
+    await selectFile(png());
+    expect(orientationToggle()).toBeNull();
+
+    store.setRatio('1:1');
+    await fixture.whenStable();
+    expect(orientationToggle()).toBeNull();
+
+    store.setRatio('4:3');
+    await fixture.whenStable();
+    expect(orientationToggle()).toBeTruthy();
+    expect(element.querySelector('.readout')?.textContent).toContain('320 × 240 px');
+
+    store.setOrientation('portrait');
+    await fixture.whenStable();
+    expect(element.querySelector('.readout')?.textContent).toContain('240 × 320 px');
+
+    // Flipping back turns the area again instead of shrinking it.
+    store.setOrientation('landscape');
+    await fixture.whenStable();
+    expect(element.querySelector('.readout')?.textContent).toContain('320 × 240 px');
+
+    // 3:2 for a classic photo look fits inside the current area.
+    store.setRatio('3:2');
+    await fixture.whenStable();
+    expect(element.querySelector('.readout')?.textContent).toContain('320 × 213 px');
   });
 
   it('rejects files that are not images', async () => {
