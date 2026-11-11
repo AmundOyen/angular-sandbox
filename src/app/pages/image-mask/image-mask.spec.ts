@@ -53,7 +53,8 @@ describe('ImageMask', () => {
 
     expect(element.querySelector('.file-name')?.textContent).toContain('photo.png');
     expect(element.querySelector('app-rect-selector')).toBeTruthy();
-    expect(element.querySelector('.masked-crop')).toBeTruthy();
+    const crop = element.querySelector('.masked-crop') as HTMLElement;
+    expect(crop.style.getPropertyValue('--crop-aspect')).toBe('640 / 320');
     expect(element.querySelector('.css')?.textContent).toContain('aspect-ratio: 640 / 320;');
   });
 
