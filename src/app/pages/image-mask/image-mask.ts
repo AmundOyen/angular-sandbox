@@ -6,7 +6,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ImageMaskStore } from './image-mask-store';
-import { clipPath, cropStyles, maskCss, MaskMode, RATIO_PRESETS, SHAPE_OPTIONS } from './mask';
+import {
+  clipPath,
+  cropStyles,
+  maskCss,
+  MaskMode,
+  ORIENTATION_OPTIONS,
+  RATIO_PRESETS,
+  SHAPE_OPTIONS,
+} from './mask';
 import { RectSelector } from './rect-selector/rect-selector';
 
 @Component({
@@ -28,6 +36,7 @@ export class ImageMask {
 
   protected readonly ratioPresets = RATIO_PRESETS;
   protected readonly shapeOptions = SHAPE_OPTIONS;
+  protected readonly orientationOptions = ORIENTATION_OPTIONS;
   protected readonly dragOver = signal(false);
 
   protected readonly clipPath = computed(() => clipPath(this.store.rect(), this.store.shape()));

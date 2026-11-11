@@ -2,13 +2,16 @@ import {
   clipPath,
   cropStyles,
   fitToRatio,
+  hasOrientation,
   maskCss,
   MIN_SIZE,
   moveRect,
+  orientRatio,
   rectFromPoints,
   resizeBy,
   resizeEdge,
   toPercentRatio,
+  turnRect,
 } from './mask';
 
 describe('mask', () => {
@@ -17,6 +20,43 @@ describe('mask', () => {
       // A square on a 2:1 image covers half as much of the width as of the height.
       expect(toPercentRatio(1, 2)).toBe(0.5);
       expect(toPercentRatio(null, 2)).toBeNull();
+    });
+  });
+
+  describe('orientation', () => {
+    it('only applies to ratios other than free-form and 1:1', () => {
+      expect(hasOrientation(null)).toBe(false);
+      expect(hasOrientation(1)).toBe(false);
+      expect(hasOrientation(16 / 9)).toBe(true);
+    });
+
+    it('inverts the ratio for portrait', () => {
+      expect(orientRatio(4 / 3, 'portrait')).toBe(3 / 4);
+      expect(orientRatio(4 / 3, 'landscape')).toBe(4 / 3);
+      expect(orientRatio(null, 'portrait')).toBeNull();
+      expect(orientRatio(1, 'portrait')).toBe(1);
+    });
+  });
+
+  describe('turnRect', () => {
+    it('swaps the pixel width and height around the center', () => {
+      // 40×20 % of an 800×400 image is 320×80 px; turned it is 80×320 px, or 10×80 %.
+      expect(turnRect({ x: 30, y: 40, width: 40, height: 20 }, 2)).toEqual({
+        x: 45,
+        y: 10,
+        width: 10,
+        height: 80,
+      });
+    });
+
+    it('scales down and stays inside the image', () => {
+      // 800×100 px turns to 100×800 px, which only fits the 400 px height at half size.
+      expect(turnRect({ x: 0, y: 0, width: 100, height: 25 }, 2)).toEqual({
+        x: 46.875,
+        y: 0,
+        width: 6.25,
+        height: 100,
+      });
     });
   });
 
@@ -126,13 +166,12 @@ describe('mask', () => {
       expect(crop).not.toContain('border-radius');
     });
 
-    it('builds an ellipse clip-path for round shapes', () => {
-      expect(clipPath(rect, 'oval')).toBe('ellipse(25% 12.5% at 35% 32.5%)');
+    it('builds an ellipse clip-path for a circle', () => {
       expect(clipPath(rect, 'circle')).toBe('ellipse(25% 12.5% at 35% 32.5%)');
     });
 
     it('generates round CSS for both modes', () => {
-      expect(maskCss('clip', rect, 800, 400, 'oval')).toContain(
+      expect(maskCss('clip', rect, 800, 400, 'circle')).toContain(
         'clip-path: ellipse(25% 12.5% at 35% 32.5%);',
       );
       expect(maskCss('crop', rect, 800, 400, 'circle')).toContain('border-radius: 50%;');

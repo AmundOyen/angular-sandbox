@@ -60,14 +60,28 @@
 
         <mat-button-toggle-group
           aria-label="Aspect ratio"
-          [value]="store.ratioLocked() ? '1:1' : store.ratio().id"
-          [disabled]="store.ratioLocked()"
+          [value]="store.ratio().id"
           (change)="store.setRatio($event.value)"
         >
           @for (preset of ratioPresets; track preset.id) {
             <mat-button-toggle [value]="preset.id">{{ preset.label }}</mat-button-toggle>
           }
         </mat-button-toggle-group>
+
+        @if (store.orientable()) {
+          <mat-button-toggle-group
+            aria-label="Orientation"
+            [value]="store.orientation()"
+            (change)="store.setOrientation($event.value)"
+          >
+            @for (orientation of orientationOptions; track orientation.id) {
+              <mat-button-toggle [value]="orientation.id">
+                <mat-icon>{{ orientation.icon }}</mat-icon>
+                {{ orientation.label }}
+              </mat-button-toggle>
+            }
+          </mat-button-toggle-group>
+        }
       </div>
 
       <app-rect-selector

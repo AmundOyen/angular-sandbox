@@ -13,8 +13,11 @@ export interface Point {
 
 export type MaskMode = 'crop' | 'clip';
 
-/** The outline of the visible area. An oval and a circle fill the selected rectangle. */
-export type MaskShape = 'rect' | 'oval' | 'circle';
+/**
+ * The outline of the visible area. A circle is an ellipse filling the selected rectangle,
+ * so it is round at 1:1 and oval at any other ratio.
+ */
+export type MaskShape = 'rect' | 'circle';
 
 export interface ShapeOption {
   id: MaskShape;
@@ -24,7 +27,6 @@ export interface ShapeOption {
 
 export const SHAPE_OPTIONS: ShapeOption[] = [
   { id: 'rect', label: 'Rectangle', icon: 'crop_square' },
-  { id: 'oval', label: 'Oval', icon: 'egg' },
   { id: 'circle', label: 'Circle', icon: 'circle' },
 ];
 
@@ -36,17 +38,39 @@ export const DEFAULT_RECT: MaskRect = { x: 10, y: 10, width: 80, height: 80 };
 export interface RatioPreset {
   id: string;
   label: string;
-  /** Width / height in pixels, or null for free-form. */
+  /** Width / height in pixels in landscape orientation, or null for free-form. */
   value: number | null;
 }
+
+export type Orientation = 'landscape' | 'portrait';
+
+export interface OrientationOption {
+  id: Orientation;
+  label: string;
+  icon: string;
+}
+
+export const ORIENTATION_OPTIONS: OrientationOption[] = [
+  { id: 'landscape', label: 'Landscape', icon: 'crop_landscape' },
+  { id: 'portrait', label: 'Portrait', icon: 'crop_portrait' },
+];
 
 export const RATIO_PRESETS: RatioPreset[] = [
   { id: 'free', label: 'Free', value: null },
   { id: '1:1', label: '1:1', value: 1 },
   { id: '4:3', label: '4:3', value: 4 / 3 },
-  { id: '3:4', label: '3:4', value: 3 / 4 },
   { id: '16:9', label: '16:9', value: 16 / 9 },
 ];
+
+/** Whether a ratio has a distinct portrait and landscape form. */
+export function hasOrientation(ratio: number | null): ratio is number {
+  return ratio !== null && ratio !== 1;
+}
+
+/** A landscape pixel ratio turned to the given orientation. */
+export function orientRatio(ratio: number | null, orientation: Orientation): number | null {
+  return hasOrientation(ratio) && orientation === 'portrait' ? 1 / ratio : ratio;
+}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -169,8 +193,27 @@ export function fitToRatio(rect: MaskRect, ratio: number | null): MaskRect {
 }
 
 /**
+ * Turns a rectangle a quarter around its center, swapping its pixel width and height, for an
+ * image with the given aspect ratio (width / height). Scales down and shifts to stay inside.
+ */
+export function turnRect(rect: MaskRect, imageAspect: number): MaskRect {
+  let width = rect.height / imageAspect;
+  let height = rect.width * imageAspect;
+  const scale = Math.min(1, 100 / width, 100 / height);
+  width *= scale;
+  height *= scale;
+  return {
+    x: clamp(rect.x + (rect.width - width) / 2, 0, 100 - width),
+    y: clamp(rect.y + (rect.height - height) / 2, 0, 100 - height),
+    width,
+    height,
+  };
+}
+
+/**
  * `clip-path` value that hides everything outside the area, leaving the image in place.
- * A circle is drawn as an ellipse because its radii are a pixel square, not a percent square.
+ * A circle is drawn as an ellipse because at 1:1 its radii are a pixel square, not a percent
+ * square, and at any other ratio it is an oval.
  */
 export function clipPath(rect: MaskRect, shape: MaskShape = 'rect'): string {
   if (shape !== 'rect') {
