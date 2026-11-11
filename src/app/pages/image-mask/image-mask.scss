@@ -117,6 +117,10 @@ h3 {
 .masked-crop {
   position: relative;
   overflow: hidden;
+  aspect-ratio: var(--crop-aspect);
+  // Same height cap as the clipped image: a tall crop gets narrower instead of taller.
+  max-width: calc(60vh * var(--crop-aspect));
+  margin-inline: auto;
 
   img {
     position: absolute;
@@ -132,6 +136,7 @@ h3 {
   display: block;
   max-width: 100%;
   max-height: 60vh;
+  margin-inline: auto;
 }
 
 .css-header {

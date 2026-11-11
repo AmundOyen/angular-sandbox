@@ -117,7 +117,7 @@
             <div
               class="masked-crop"
               [class.round]="store.shape() !== 'rect'"
-              [style.aspect-ratio]="crop.aspectRatio"
+              [style.--crop-aspect]="crop.aspectRatio"
             >
               <img
                 [src]="image.url"
