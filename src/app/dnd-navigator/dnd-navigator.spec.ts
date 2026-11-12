@@ -164,6 +164,49 @@ describe('DndNavigator', () => {
       expect(document.querySelector('nav-edit-dialog')).not.toBeNull();
       expect(fixture.componentInstance.items()[1].label).toBe('Media');
     });
+
+    const dialogForm = () =>
+      (TestBed.inject(MatDialog).openDialogs[0].componentInstance as NavEditDialog).form;
+
+    it('edits an item with F2', async () => {
+      query('[data-id="home"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'F2' }));
+      const dialog = await waitForDialog();
+      expect(dialog.querySelector('h2')?.textContent).toContain('Edit item');
+      expect(dialogForm().getRawValue()).toEqual({ label: 'Home', icon: 'home' });
+
+      dialogForm().setValue({ label: 'Start', icon: 'rocket' });
+      dialog.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+
+      await vi.waitFor(() =>
+        expect(fixture.componentInstance.items()[0]).toEqual({
+          kind: 'item',
+          id: 'home',
+          label: 'Start',
+          icon: 'rocket',
+        }),
+      );
+      await fixture.whenStable();
+      expect(query('[data-id="home"] .tile-label').textContent?.trim()).toBe('Start');
+      expect(query('[data-id="home"] .tile-icon').textContent?.trim()).toBe('rocket');
+    });
+
+    it('edits an item on double-click', async () => {
+      query('[data-id="home"]').dispatchEvent(new MouseEvent('dblclick'));
+      expect((await waitForDialog()).querySelector('h2')?.textContent).toContain('Edit item');
+    });
+
+    it('requires an icon for an item', async () => {
+      query('[data-id="home"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'F2' }));
+      const dialog = await waitForDialog();
+      dialogForm().controls.icon.setValue(null);
+      dialog.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+      await fixture.whenStable();
+
+      expect(dialog.textContent).toContain('Choose an icon');
+      expect(fixture.componentInstance.items()[0]).toEqual(
+        expect.objectContaining({ icon: 'home' }),
+      );
+    });
   });
 
   describe('deep grouping', () => {
