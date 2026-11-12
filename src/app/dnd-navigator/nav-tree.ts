@@ -15,6 +15,8 @@ export interface NavMenu {
   readonly kind: 'menu';
   readonly id: string;
   readonly label: string;
+  /** Material icon ligature name; a default menu icon is shown when unset. */
+  readonly icon?: string;
   readonly children: readonly NavItem[];
 }
 
@@ -26,6 +28,8 @@ export interface NavGroup {
   readonly kind: 'group';
   readonly id: string;
   readonly label: string;
+  /** Material icon ligature name; a folder icon is shown when unset. */
+  readonly icon?: string;
   readonly children: readonly NavGroupChild[];
 }
 
@@ -240,24 +244,41 @@ export function moveNode(
   );
 }
 
+/** Changes to a group or menu made with `editGroup`. */
+export interface GroupChanges {
+  readonly label?: string;
+  /** New icon; `null` removes it so the default icon is shown. */
+  readonly icon?: string | null;
+}
+
 /** Returns a copy of `nodes` with the label of the group or menu `id` replaced. */
 export function renameGroup(
   nodes: readonly NavNode[],
   id: string,
   label: string,
 ): readonly NavNode[] {
-  return nodes.map((node) => renameIn(node, id, label));
+  return editGroup(nodes, id, { label });
 }
 
-function renameIn<T extends NavNode>(node: T, id: string, label: string): T {
+/** Returns a copy of `nodes` with the label and/or icon of the group or menu `id` changed. */
+export function editGroup(
+  nodes: readonly NavNode[],
+  id: string,
+  changes: GroupChanges,
+): readonly NavNode[] {
+  return nodes.map((node) => editIn(node, id, changes));
+}
+
+function editIn<T extends NavNode>(node: T, id: string, changes: GroupChanges): T {
   if (node.kind === 'item') {
     return node;
   }
   if (node.id === id) {
-    return { ...node, label };
+    const { icon, ...rest } = { ...node, ...changes };
+    return (icon ? { ...rest, icon } : rest) as T;
   }
   if (node.kind === 'group') {
-    return { ...node, children: node.children.map((child) => renameIn(child, id, label)) };
+    return { ...node, children: node.children.map((child) => editIn(child, id, changes)) };
   }
   return node;
 }

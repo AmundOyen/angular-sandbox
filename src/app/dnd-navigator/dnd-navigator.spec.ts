@@ -1,8 +1,10 @@
 import { Component, signal } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 
 import { DndNavigator } from './dnd-navigator';
+import type { NavEditDialog } from './nav-edit-dialog';
 import { NavItem, NavNode } from './nav-tree';
 
 @Component({
@@ -90,29 +92,78 @@ describe('DndNavigator', () => {
     expect(query('[data-id="photos"]').dataset['parent']).toBe('media');
   });
 
-  it('renames a group with F2 and emits the new tree', async () => {
-    query('[data-drop="group-header"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'F2' }));
-    await fixture.whenStable();
+  describe('editing', () => {
+    afterEach(() => TestBed.inject(MatDialog).closeAll());
 
-    const input = query('.rename-input') as HTMLInputElement;
-    input.value = 'Library';
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-    await fixture.whenStable();
+    /** The dialog is loaded lazily, so it opens a few ticks after the request. */
+    const waitForDialog = async () => {
+      const dialog = await vi.waitFor(() => {
+        const element = document.querySelector<HTMLElement>('nav-edit-dialog');
+        expect(element).not.toBeNull();
+        return element!;
+      });
+      await fixture.whenStable();
+      return dialog;
+    };
 
-    expect(fixture.componentInstance.items()[1].label).toBe('Library');
-    expect(element.querySelector('.rename-input')).toBeNull();
-  });
+    const openDialog = async () => {
+      query('[data-drop="group-header"]').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'F2' }),
+      );
+      return waitForDialog();
+    };
 
-  it('keeps the original name when renaming is cancelled', async () => {
-    query('[data-drop="group-header"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'F2' }));
-    await fixture.whenStable();
+    it('opens a dialog with F2 and saves the new label and icon', async () => {
+      const dialog = await openDialog();
+      expect(dialog.querySelector('h2')?.textContent).toContain('Edit group');
+      const label = dialog.querySelector<HTMLInputElement>('input[formcontrolname="label"]')!;
+      expect(label.value).toBe('Media');
 
-    const input = query('.rename-input') as HTMLInputElement;
-    input.value = 'Nope';
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-    await fixture.whenStable();
+      label.value = 'Library';
+      label.dispatchEvent(new Event('input'));
+      // The icon field is covered by its own tests; set its value through the form.
+      expect(dialog.querySelector('material-icon-input')).not.toBeNull();
+      const { form } = TestBed.inject(MatDialog).openDialogs[0].componentInstance as NavEditDialog;
+      form.controls.icon.setValue('star');
 
-    expect(fixture.componentInstance.items()[1].label).toBe('Media');
+      dialog.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+      // afterClosed emits once the close animation has finished.
+      await vi.waitFor(() =>
+        expect(fixture.componentInstance.items()[1]).toEqual(
+          expect.objectContaining({ label: 'Library', icon: 'star' }),
+        ),
+      );
+      await fixture.whenStable();
+      expect(query('[data-drop="group-header"] mat-icon').textContent?.trim()).toBe('star');
+    });
+
+    it('opens the dialog on double-click', async () => {
+      query('[data-drop="group-header"]').dispatchEvent(new MouseEvent('dblclick'));
+      expect(await waitForDialog()).not.toBeNull();
+    });
+
+    it('keeps the group unchanged when the dialog is cancelled', async () => {
+      const dialog = await openDialog();
+      const label = dialog.querySelector<HTMLInputElement>('input[formcontrolname="label"]')!;
+      label.value = 'Nope';
+      label.dispatchEvent(new Event('input'));
+      dialog.querySelector<HTMLButtonElement>('button[mat-dialog-close]')!.click();
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.items()[1].label).toBe('Media');
+    });
+
+    it('does not save an empty label', async () => {
+      const dialog = await openDialog();
+      const label = dialog.querySelector<HTMLInputElement>('input[formcontrolname="label"]')!;
+      label.value = '  ';
+      label.dispatchEvent(new Event('input'));
+      dialog.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+      await fixture.whenStable();
+
+      expect(document.querySelector('nav-edit-dialog')).not.toBeNull();
+      expect(fixture.componentInstance.items()[1].label).toBe('Media');
+    });
   });
 
   describe('deep grouping', () => {
