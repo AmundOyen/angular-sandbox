@@ -244,12 +244,18 @@ export function moveNode(
   );
 }
 
-/** Changes to a group or menu made with `editGroup`. */
-export interface GroupChanges {
+/** Changes to a node made with `editNode`. */
+export interface NodeChanges {
   readonly label?: string;
-  /** New icon; `null` removes it so the default icon is shown. */
+  /**
+   * New icon. `null` removes the icon of a group or menu so the default icon is shown; items
+   * always have an icon, so `null` keeps theirs.
+   */
   readonly icon?: string | null;
 }
+
+/** @deprecated Use `NodeChanges`. */
+export type GroupChanges = NodeChanges;
 
 /** Returns a copy of `nodes` with the label of the group or menu `id` replaced. */
 export function renameGroup(
@@ -257,30 +263,34 @@ export function renameGroup(
   id: string,
   label: string,
 ): readonly NavNode[] {
-  return editGroup(nodes, id, { label });
+  return editNode(nodes, id, { label });
 }
 
-/** Returns a copy of `nodes` with the label and/or icon of the group or menu `id` changed. */
-export function editGroup(
+/** Returns a copy of `nodes` with the label and/or icon of the item, group or menu `id` changed. */
+export function editNode(
   nodes: readonly NavNode[],
   id: string,
-  changes: GroupChanges,
+  changes: NodeChanges,
 ): readonly NavNode[] {
   return nodes.map((node) => editIn(node, id, changes));
 }
 
-function editIn<T extends NavNode>(node: T, id: string, changes: GroupChanges): T {
+/** @deprecated Use `editNode`, which also edits items. */
+export const editGroup = editNode;
+
+function editIn<T extends NavNode>(node: T, id: string, changes: NodeChanges): T {
+  if (node.id === id) {
+    const { icon, ...rest } = { ...node, ...changes };
+    if (node.kind === 'item') {
+      return { ...rest, icon: icon ?? node.icon } as T;
+    }
+    return (icon ? { ...rest, icon } : rest) as T;
+  }
   if (node.kind === 'item') {
     return node;
   }
-  if (node.id === id) {
-    const { icon, ...rest } = { ...node, ...changes };
-    return (icon ? { ...rest, icon } : rest) as T;
-  }
-  if (node.kind === 'group') {
-    return { ...node, children: node.children.map((child) => editIn(child, id, changes)) };
-  }
-  return node;
+  const children = node.children.map((child: NavNode) => editIn(child, id, changes));
+  return { ...node, children } as T;
 }
 
 /**

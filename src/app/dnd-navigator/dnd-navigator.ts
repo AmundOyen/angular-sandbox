@@ -34,7 +34,7 @@ import {
   canDrop,
   createGroup,
   createMenu,
-  editGroup,
+  editNode,
   findNode,
   keyboardTarget,
   moveNode,
@@ -91,7 +91,7 @@ interface ActiveDrag {
  * - Alt+ArrowLeft moves it out of its group or menu.
  * Focus stays on the moved node, and each move is announced to screen readers.
  *
- * Double-click a group, or press F2 on a group or menu, to edit its label and icon in a dialog.
+ * Double-click an item or group, or press F2 on any node, to edit its label and icon in a dialog.
  *
  * Bind with `[(items)]`; every change emits a new, immutable tree. The button at the top switches
  * between the compact rail and a wide drawer; bind `[(expanded)]` to control or remember that state.
@@ -214,11 +214,13 @@ export class DndNavigator {
   }
 
   /**
-   * Opens a dialog to edit the label and icon of a group or menu. The dialog and its icon picker
+   * Opens a dialog to edit the label and icon of an item, group or menu. The dialog and its icon picker
    * are loaded on first use, which keeps the icon catalogue out of the initial bundle.
    */
-  protected async startEdit(node: NavGroup | NavMenu, event?: Event): Promise<void> {
+  protected async startEdit(node: NavNode, event?: Event): Promise<void> {
     event?.preventDefault();
+    // Keep MatMenu from handling the key too.
+    event?.stopPropagation();
     const [{ MatDialog }, { NavEditDialog }] = await Promise.all([
       import('@angular/material/dialog'),
       import('./nav-edit-dialog'),
@@ -228,14 +230,19 @@ export class DndNavigator {
     }
     const ref = this.injector.get(MatDialog).open(NavEditDialog, {
       width: '420px',
-      data: { kind: node.kind, label: node.label, icon: node.icon ?? null },
+      data: {
+        kind: node.kind,
+        label: node.label,
+        icon: node.icon ?? null,
+        iconRequired: node.kind === 'item',
+      },
     });
     ref
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((result) => {
         if (result && (result.label !== node.label || result.icon !== (node.icon ?? null))) {
-          this.items.set(editGroup(this.items(), node.id, result));
+          this.items.set(editNode(this.items(), node.id, result));
           this.announcer.announce(`${result.label} updated`);
         }
         // The dialog can't restore focus when it was opened from a menu panel that has closed.

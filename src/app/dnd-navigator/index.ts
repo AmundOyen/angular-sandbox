@@ -2,6 +2,7 @@ export { DndNavigator } from './dnd-navigator';
 export type {
   DropTarget,
   GroupChanges,
+  NodeChanges,
   GroupFactory,
   MenuFactory,
   MoveDirection,
@@ -17,6 +18,7 @@ export {
   createGroup,
   createMenu,
   editGroup,
+  editNode,
   keyboardTarget,
   moveNode,
   normalize,

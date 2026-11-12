@@ -6,11 +6,14 @@ import {
   MenuFactory,
   MoveDirection,
   moveNode,
+  NavGroup,
   NavGroupChild,
   NavItem,
+  NavMenu,
   NavNode,
   normalize,
   editGroup,
+  editNode,
   renameGroup,
 } from './nav-tree';
 
@@ -182,6 +185,19 @@ describe('nav-tree', () => {
     const cleared = editGroup(edited, 'g', { icon: null });
     expect(cleared[1].label).toBe('Tools');
     expect('icon' in cleared[1]).toBe(false);
+  });
+
+  it('edits an item at the root, in a group and in a menu, keeping its icon for null', () => {
+    const tree: NavNode[] = [item('a'), deepGroup('g', 'b', menu('m', 'c', 'd'))];
+    const atRoot = editNode(tree, 'a', { label: 'A', icon: null });
+    expect(atRoot[0]).toEqual({ kind: 'item', id: 'a', label: 'A', icon: 'circle' });
+
+    const inGroup = editNode(tree, 'b', { icon: 'star' }) as [NavNode, NavGroup];
+    expect(inGroup[1].children[0]).toEqual(expect.objectContaining({ id: 'b', icon: 'star' }));
+
+    const inMenu = editNode(tree, 'd', { label: 'D' }) as [NavNode, NavGroup];
+    const m = inMenu[1].children[1] as NavMenu;
+    expect(m.children[1]).toEqual(expect.objectContaining({ id: 'd', label: 'D' }));
   });
 
   it('renames a group', () => {

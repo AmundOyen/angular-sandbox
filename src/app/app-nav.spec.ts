@@ -43,11 +43,16 @@ describe('restoreNavLayout', () => {
     expect(restoreNavLayout({ not: 'a tree' }, pages)).toEqual(pages);
   });
 
-  it('keeps the saved order and groups, and takes labels and icons from the pages', () => {
+  it('keeps the saved order and groups', () => {
     const saved = [
-      page('/c', 'Old label', 'old_icon'),
-      { kind: 'group', id: 'g1', label: 'My group', children: [page('/b'), page('/')] },
-      page('/a'),
+      page('/c', 'C'),
+      {
+        kind: 'group',
+        id: 'g1',
+        label: 'My group',
+        children: [page('/b', 'B'), page('/', 'Home')],
+      },
+      page('/a', 'A'),
     ];
     expect(restoreNavLayout(saved, pages)).toEqual([
       page('/c', 'C'),
@@ -61,11 +66,65 @@ describe('restoreNavLayout', () => {
     ]);
   });
 
+  it('keeps edited labels and icons of items, groups and menus', () => {
+    const saved = [
+      page('/c', 'Renamed', 'rocket'),
+      {
+        kind: 'group',
+        id: 'g1',
+        label: 'My group',
+        icon: 'work',
+        children: [
+          page('/b', 'B'),
+          {
+            kind: 'menu',
+            id: 'm1',
+            label: 'More',
+            icon: 'list',
+            children: [page('/'), page('/a')],
+          },
+        ],
+      },
+    ];
+    expect(restoreNavLayout(saved, pages)).toEqual([
+      page('/c', 'Renamed', 'rocket'),
+      {
+        kind: 'group',
+        id: 'g1',
+        label: 'My group',
+        icon: 'work',
+        children: [
+          page('/b', 'B'),
+          {
+            kind: 'menu',
+            id: 'm1',
+            label: 'More',
+            icon: 'list',
+            children: [page('/'), page('/a')],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('takes a missing or invalid label or icon from the page', () => {
+    const saved = [
+      { kind: 'item', id: '/a', label: ' ', icon: 42 },
+      { kind: 'item', id: '/b' },
+    ];
+    expect(restoreNavLayout(saved, pages)).toEqual([
+      page('/a', 'A'),
+      page('/b', 'B'),
+      page('/', 'Home'),
+      page('/c', 'C'),
+    ]);
+  });
+
   it('drops removed pages, appends new pages and ungroups groups left with one item', () => {
     const saved = [
-      { kind: 'group', id: 'g1', label: 'G', children: [page('/gone'), page('/b')] },
-      page('/a'),
-      page('/a'),
+      { kind: 'group', id: 'g1', label: 'G', children: [page('/gone'), page('/b', 'B')] },
+      page('/a', 'A'),
+      page('/a', 'A'),
       'junk',
     ];
     expect(restoreNavLayout(saved, pages)).toEqual([

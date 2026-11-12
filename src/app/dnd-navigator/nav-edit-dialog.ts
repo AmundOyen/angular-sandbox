@@ -8,19 +8,21 @@ import { MatInputModule } from '@angular/material/input';
 import { MaterialIconInput } from '../material-icon-picker';
 
 export interface NavEditDialogData {
-  /** What is being edited, used in the title and labels, e.g. `group` or `menu`. */
+  /** What is being edited, used in the title, e.g. `item`, `group` or `menu`. */
   readonly kind: string;
   readonly label: string;
   readonly icon: string | null;
+  /** Whether an icon must be chosen. Otherwise an empty icon means the default icon. */
+  readonly iconRequired?: boolean;
 }
 
 export interface NavEditDialogResult {
   readonly label: string;
-  /** The chosen icon, or `null` for the default icon. */
+  /** The chosen icon, or `null` for the default icon (never `null` when the icon is required). */
   readonly icon: string | null;
 }
 
-/** Dialog for editing the label and icon of a navigator group or menu. */
+/** Dialog for editing the label and icon of a navigator item, group or menu. */
 @Component({
   selector: 'nav-edit-dialog',
   imports: [
@@ -44,8 +46,12 @@ export interface NavEditDialogResult {
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Icon</mat-label>
-          <material-icon-input formControlName="icon" />
-          <mat-hint>Leave empty to use the default icon</mat-hint>
+          <material-icon-input formControlName="icon" [required]="!!data.iconRequired" />
+          @if (form.controls.icon.invalid) {
+            <mat-error>Choose an icon</mat-error>
+          } @else if (!data.iconRequired) {
+            <mat-hint>Leave empty to use the default icon</mat-hint>
+          }
         </mat-form-field>
       </mat-dialog-content>
       <mat-dialog-actions align="end">
@@ -77,7 +83,10 @@ export class NavEditDialog {
       nonNullable: true,
       validators: [Validators.required, Validators.pattern(/\S/)],
     }),
-    icon: new FormControl<string | null>(this.data.icon),
+    icon: new FormControl<string | null>(
+      this.data.icon,
+      this.data.iconRequired ? Validators.required : null,
+    ),
   });
 
   protected save(): void {

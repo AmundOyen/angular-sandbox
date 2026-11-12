@@ -138,6 +138,7 @@
                             (pointerdown)="onPointerDown($event, menuChild)"
                             (keydown)="onMoveKeydown($event, menuChild)"
                             (click)="onItemClick(menuChild)"
+                            (keydown.f2)="startEdit(menuChild, $event)"
                             (contextmenu)="dragging() && $event.preventDefault()"
                           >
                             <mat-icon>{{ menuChild.icon }}</mat-icon>
@@ -172,11 +173,13 @@
     [class.active]="activeId() === item.id"
     [class.dragging]="draggedId() === item.id"
     [class]="dropClass(item.id)"
-    [title]="item.label"
+    [title]="item.label + ' (double-click or F2 to edit)'"
     [attr.aria-keyshortcuts]="moveShortcuts"
     (pointerdown)="onPointerDown($event, item)"
     (keydown)="onMoveKeydown($event, item)"
     (click)="onItemClick(item)"
+    (dblclick)="startEdit(item, $event)"
+    (keydown.f2)="startEdit(item, $event)"
     (contextmenu)="dragging() && $event.preventDefault()"
   >
     <mat-icon class="tile-icon">{{ item.icon }}</mat-icon>
