@@ -6,17 +6,16 @@ import {
   Injector,
   afterNextRender,
   computed,
-  effect,
   inject,
   input,
   model,
   output,
   signal,
-  viewChild,
   viewChildren,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Directionality } from '@angular/cdk/bidi';
 import { MatIconButton } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -35,10 +34,10 @@ import {
   canDrop,
   createGroup,
   createMenu,
+  editGroup,
   findNode,
   keyboardTarget,
   moveNode,
-  renameGroup,
 } from './nav-tree';
 
 /** Pointer travel (px) before a mouse press turns into a drag. */
@@ -92,6 +91,8 @@ interface ActiveDrag {
  * - Alt+ArrowLeft moves it out of its group or menu.
  * Focus stays on the moved node, and each move is announced to screen readers.
  *
+ * Double-click a group, or press F2 on a group or menu, to edit its label and icon in a dialog.
+ *
  * Bind with `[(items)]`; every change emits a new, immutable tree. The button at the top switches
  * between the compact rail and a wide drawer; bind `[(expanded)]` to control or remember that state.
  */
@@ -123,7 +124,6 @@ export class DndNavigator {
   protected readonly dragging = signal<ActiveDrag | null>(null);
   protected readonly dropTarget = signal<DropTarget | null>(null);
   protected readonly previewPosition = signal({ x: 0, y: 0 });
-  protected readonly editingGroupId = signal<string | null>(null);
 
   protected readonly draggedId = computed(() => this.dragging()?.node.id ?? null);
   /** Marks this navigator's menu panels, which render in an overlay outside the host. */
@@ -137,7 +137,7 @@ export class DndNavigator {
   private readonly announcer = inject(LiveAnnouncer);
   private readonly injector = inject(Injector);
   private readonly dir = inject(Directionality, { optional: true });
-  private readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
+  private readonly destroyRef = inject(DestroyRef);
   private readonly menuTriggers = viewChildren('menuTrigger', { read: MatMenuTrigger });
   private readonly menuTriggerElements = viewChildren('menuTrigger', { read: ElementRef });
 
@@ -151,11 +151,6 @@ export class DndNavigator {
   private suppressClickUntil = 0;
 
   constructor() {
-    effect(() => {
-      const input = this.renameInput()?.nativeElement;
-      input?.focus();
-      input?.select();
-    });
     // Registered for the component's lifetime: the browser decides whether a touch may scroll
     // when it starts, so a listener added once the drag begins would be too late.
     const host = this.host.nativeElement;
@@ -163,7 +158,7 @@ export class DndNavigator {
     // Swallow the click that follows a drop before it reaches handlers such as a menu trigger's or
     // the menu panel's (which closes the menu). The panel renders in an overlay outside the host.
     this.document.addEventListener('click', this.onClickCapture, true);
-    inject(DestroyRef).onDestroy(() => {
+    this.destroyRef.onDestroy(() => {
       host.removeEventListener('touchmove', this.onTouchMove);
       this.document.removeEventListener('click', this.onClickCapture, true);
       this.endDrag();
@@ -213,24 +208,46 @@ export class DndNavigator {
     this.expanded.update((expanded) => !expanded);
   }
 
-  protected startRename(group: NavGroup | NavMenu, event?: Event): void {
-    event?.preventDefault();
-    this.editingGroupId.set(group.id);
+  /** Icon shown for a group: its own, or a folder that opens with the group. */
+  protected groupIcon(group: NavGroup): string {
+    return group.icon ?? (this.isGroupOpen(group) ? 'folder_open' : 'folder');
   }
 
-  protected commitRename(group: NavGroup | NavMenu, value: string): void {
-    if (this.editingGroupId() !== group.id) {
+  /**
+   * Opens a dialog to edit the label and icon of a group or menu. The dialog and its icon picker
+   * are loaded on first use, which keeps the icon catalogue out of the initial bundle.
+   */
+  protected async startEdit(node: NavGroup | NavMenu, event?: Event): Promise<void> {
+    event?.preventDefault();
+    const [{ MatDialog }, { NavEditDialog }] = await Promise.all([
+      import('@angular/material/dialog'),
+      import('./nav-edit-dialog'),
+    ]);
+    if (this.destroyRef.destroyed) {
       return;
     }
-    this.editingGroupId.set(null);
-    const label = value.trim();
-    if (label && label !== group.label) {
-      this.items.set(renameGroup(this.items(), group.id, label));
-    }
+    const ref = this.injector.get(MatDialog).open(NavEditDialog, {
+      width: '420px',
+      data: { kind: node.kind, label: node.label, icon: node.icon ?? null },
+    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result && (result.label !== node.label || result.icon !== (node.icon ?? null))) {
+          this.items.set(editGroup(this.items(), node.id, result));
+          this.announcer.announce(`${result.label} updated`);
+        }
+        // The dialog can't restore focus when it was opened from a menu panel that has closed.
+        afterNextRender(() => this.focusAfterEdit(node.id), { injector: this.injector });
+      });
   }
 
-  protected cancelRename(): void {
-    this.editingGroupId.set(null);
+  private focusAfterEdit(id: string): void {
+    const active = this.document.activeElement;
+    if (!active || active === this.document.body) {
+      this.findTile(id)?.focus();
+    }
   }
 
   protected toggleMenu(menuId: string): void {
@@ -261,7 +278,7 @@ export class DndNavigator {
       return;
     }
     const direction = this.keyDirection(event.key);
-    if (!direction || this.dragging() || this.editingGroupId()) {
+    if (!direction || this.dragging()) {
       return;
     }
     // Keep MatMenu's own key handling (and the browser's Alt+arrow navigation) out of it.
@@ -330,7 +347,7 @@ export class DndNavigator {
   // ---- Drag and drop -----------------------------------------------------
 
   protected onPointerDown(event: PointerEvent, node: NavNode): void {
-    if (event.button !== 0 || this.pending || this.dragging() || this.editingGroupId()) {
+    if (event.button !== 0 || this.pending || this.dragging()) {
       return;
     }
     const tile = event.currentTarget as HTMLElement;

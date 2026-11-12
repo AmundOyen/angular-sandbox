@@ -10,6 +10,7 @@ import {
   NavItem,
   NavNode,
   normalize,
+  editGroup,
   renameGroup,
 } from './nav-tree';
 
@@ -172,6 +173,15 @@ describe('nav-tree', () => {
   it('normalize unwraps single-item groups and removes empty ones', () => {
     const tree: NavNode[] = [group('g', 'a'), { kind: 'group', id: 'e', label: 'e', children: [] }];
     expect(shape(normalize(tree))).toEqual(['a']);
+  });
+
+  it('edits the label and icon of a group, and removes the icon again', () => {
+    const tree: NavNode[] = [item('a'), group('g', 'b', 'c')];
+    const edited = editGroup(tree, 'g', { label: 'Tools', icon: 'build' });
+    expect(edited[1]).toEqual(expect.objectContaining({ label: 'Tools', icon: 'build' }));
+    const cleared = editGroup(edited, 'g', { icon: null });
+    expect(cleared[1].label).toBe('Tools');
+    expect('icon' in cleared[1]).toBe(false);
   });
 
   it('renames a group', () => {

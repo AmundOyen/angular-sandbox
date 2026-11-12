@@ -31,45 +31,30 @@
         [class.dragging]="draggedId() === node.id"
         [class]="dropClass(node.id)"
       >
-        @if (editingGroupId() === node.id) {
-          <div class="tile group-header editing">
-            <mat-icon class="tile-icon">folder_open</mat-icon>
-            <input
-              #renameInput
-              class="rename-input"
-              aria-label="Group name"
-              [value]="node.label"
-              (keydown.enter)="commitRename(node, renameInput.value)"
-              (keydown.escape)="cancelRename()"
-              (blur)="commitRename(node, renameInput.value)"
-            />
-          </div>
-        } @else {
-          <button
-            type="button"
-            class="tile group-header"
-            data-drop="group-header"
-            [attr.data-id]="node.id"
-            [attr.aria-expanded]="isGroupOpen(node)"
-            [title]="node.label + ' (double-click or F2 to rename)'"
-            [attr.aria-keyshortcuts]="moveShortcuts"
-            (pointerdown)="onPointerDown($event, node)"
-            (keydown)="onMoveKeydown($event, node)"
-            (click)="toggleGroup(node)"
-            (dblclick)="startRename(node, $event)"
-            (keydown.f2)="startRename(node, $event)"
-            (contextmenu)="dragging() && $event.preventDefault()"
-          >
-            <span class="tile-icon group-icon">
-              <mat-icon>{{ isGroupOpen(node) ? 'folder_open' : 'folder' }}</mat-icon>
-              <span class="badge">{{ node.children.length }}</span>
-            </span>
-            <span class="tile-label">{{ node.label }}</span>
-            <mat-icon class="chevron" aria-hidden="true">{{
-              isGroupOpen(node) ? 'expand_less' : 'expand_more'
-            }}</mat-icon>
-          </button>
-        }
+        <button
+          type="button"
+          class="tile group-header"
+          data-drop="group-header"
+          [attr.data-id]="node.id"
+          [attr.aria-expanded]="isGroupOpen(node)"
+          [title]="node.label + ' (double-click or F2 to edit)'"
+          [attr.aria-keyshortcuts]="moveShortcuts"
+          (pointerdown)="onPointerDown($event, node)"
+          (keydown)="onMoveKeydown($event, node)"
+          (click)="toggleGroup(node)"
+          (dblclick)="startEdit(node, $event)"
+          (keydown.f2)="startEdit(node, $event)"
+          (contextmenu)="dragging() && $event.preventDefault()"
+        >
+          <span class="tile-icon group-icon">
+            <mat-icon>{{ groupIcon(node) }}</mat-icon>
+            <span class="badge">{{ node.children.length }}</span>
+          </span>
+          <span class="tile-label">{{ node.label }}</span>
+          <mat-icon class="chevron" aria-hidden="true">{{
+            isGroupOpen(node) ? 'expand_less' : 'expand_more'
+          }}</mat-icon>
+        </button>
 
         @if (isGroupOpen(node)) {
           <ul class="group-children" role="group" [attr.aria-label]="node.label">
@@ -97,48 +82,33 @@
                     (menuOpened)="openMenuId.set(child.id)"
                     (menuClosed)="onMenuClosed(child.id)"
                   ></span>
-                  @if (editingGroupId() === child.id) {
-                    <div class="tile editing">
-                      <mat-icon class="tile-icon">{{ menuIcon }}</mat-icon>
-                      <input
-                        #renameInput
-                        class="rename-input"
-                        aria-label="Menu name"
-                        [value]="child.label"
-                        (keydown.enter)="commitRename(child, renameInput.value)"
-                        (keydown.escape)="cancelRename()"
-                        (blur)="commitRename(child, renameInput.value)"
-                      />
-                    </div>
-                  } @else {
-                    <button
-                      type="button"
-                      class="tile menu-trigger"
-                      data-drop="menu-trigger"
-                      aria-haspopup="menu"
-                      [attr.data-id]="child.id"
-                      [attr.data-parent]="node.id"
-                      [attr.aria-expanded]="openMenuId() === child.id"
-                      [attr.aria-controls]="openMenuId() === child.id ? menuPanel.panelId : null"
-                      (click)="toggleMenu(child.id)"
-                      [class.active]="containsActive(child)"
-                      [class.dragging]="draggedId() === child.id"
-                      [class]="dropClass(child.id)"
-                      [title]="child.label + ' (F2 to rename)'"
-                      [attr.aria-keyshortcuts]="moveShortcuts"
-                      (pointerdown)="onPointerDown($event, child)"
-                      (keydown)="onMoveKeydown($event, child)"
-                      (keydown.f2)="startRename(child, $event)"
-                      (contextmenu)="dragging() && $event.preventDefault()"
-                    >
-                      <span class="tile-icon group-icon">
-                        <mat-icon>{{ menuIcon }}</mat-icon>
-                        <span class="badge">{{ child.children.length }}</span>
-                      </span>
-                      <span class="tile-label">{{ child.label }}</span>
-                      <mat-icon class="chevron" aria-hidden="true">arrow_right</mat-icon>
-                    </button>
-                  }
+                  <button
+                    type="button"
+                    class="tile menu-trigger"
+                    data-drop="menu-trigger"
+                    aria-haspopup="menu"
+                    [attr.data-id]="child.id"
+                    [attr.data-parent]="node.id"
+                    [attr.aria-expanded]="openMenuId() === child.id"
+                    [attr.aria-controls]="openMenuId() === child.id ? menuPanel.panelId : null"
+                    (click)="toggleMenu(child.id)"
+                    [class.active]="containsActive(child)"
+                    [class.dragging]="draggedId() === child.id"
+                    [class]="dropClass(child.id)"
+                    [title]="child.label + ' (F2 to edit)'"
+                    [attr.aria-keyshortcuts]="moveShortcuts"
+                    (pointerdown)="onPointerDown($event, child)"
+                    (keydown)="onMoveKeydown($event, child)"
+                    (keydown.f2)="startEdit(child, $event)"
+                    (contextmenu)="dragging() && $event.preventDefault()"
+                  >
+                    <span class="tile-icon group-icon">
+                      <mat-icon>{{ child.icon ?? menuIcon }}</mat-icon>
+                      <span class="badge">{{ child.children.length }}</span>
+                    </span>
+                    <span class="tile-label">{{ child.label }}</span>
+                    <mat-icon class="chevron" aria-hidden="true">arrow_right</mat-icon>
+                  </button>
                   <mat-menu
                     #menuPanel="matMenu"
                     xPosition="after"
@@ -175,9 +145,9 @@
                           </button>
                         }
                       </div>
-                      <button mat-menu-item type="button" (click)="startRename(child)">
+                      <button mat-menu-item type="button" (click)="startEdit(child)">
                         <mat-icon>edit</mat-icon>
-                        <span>Rename menu</span>
+                        <span>Edit menu</span>
                       </button>
                     </ng-template>
                   </mat-menu>
@@ -226,9 +196,9 @@
     <div class="tile" [style.transform-origin]="drag.offsetX + 'px ' + drag.offsetY + 'px'">
       <mat-icon class="tile-icon">{{
         drag.node.kind === 'group'
-          ? 'folder'
+          ? (drag.node.icon ?? 'folder')
           : drag.node.kind === 'menu'
-            ? menuIcon
+            ? (drag.node.icon ?? menuIcon)
             : drag.node.icon
       }}</mat-icon>
       <span class="tile-label">{{ drag.node.label }}</span>
